@@ -1,18 +1,12 @@
-import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-# Database Configuration
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_DATABASE', 'university_comparison')
-}
-
-# Application Configuration
-APP_TITLE = os.getenv('APP_TITLE', 'Ứng dụng So sánh Thông tin Đầu vào Trường Đại học')
-APP_WIDTH = int(os.getenv('APP_WIDTH', 1200))
-APP_HEIGHT = int(os.getenv('APP_HEIGHT', 700))
+SYSTEM_PROMPT = """
+Bạn là trợ lý tư vấn du học thông minh.
+Nhiệm vụ của bạn: giúp người dùng so sánh các thông tin đầu vào của các trường đại học nước ngoài.
+Khi người dùng hỏi, hãy trả lời rõ ràng và có cấu trúc, ví dụ:
+- GPA tối thiểu
+- IELTS hoặc TOEFL yêu cầu
+- Học phí trung bình mỗi năm
+- Cơ hội học bổng (loại, tỉ lệ)
+- Vị trí, ngành học mạnh
+Nếu người dùng yêu cầu so sánh, hãy lập bảng hoặc danh sách dễ đọc.
+Trả lời bằng tiếng Việt, ngắn gọn, chính xác, thân thiện.
+"""

@@ -1,189 +1,121 @@
-# Ứng dụng So sánh Thông tin Đầu vào Trường Đại học
+🎓 Chatbot Tư Vấn & So Sánh Đại Học Quốc Tế
+Ứng dụng Tkinter + g4f + Python
 
-Ứng dụng desktop được xây dựng bằng Python Tkinter để quản lý và so sánh thông tin đầu vào của các trường đại học nước ngoài.
+Ứng dụng này cung cấp một chatbot giao diện đồ họa (GUI) giúp người dùng tra cứu và so sánh các thông tin du học giữa các trường đại học quốc tế.
 
-## Tính năng
+Chatbot được xây dựng bằng Tkinter, sử dụng API miễn phí từ g4f (GPT-4o-mini), hỗ trợ phản hồi dạng streaming, nhanh và mượt.
 
-### 1. Quản lý Trường Đại học
-- ✅ Thêm, sửa, xóa thông tin trường đại học
-- ✅ Tìm kiếm trường theo tên, quốc gia, thành phố
-- ✅ Hiển thị danh sách tất cả trường đại học
-- ✅ Lưu trữ thông tin: tên trường, quốc gia, thành phố, xếp hạng, website, năm thành lập
+📌 Tính năng chính
+🔍 Tư vấn du học theo yêu cầu
 
-### 2. Quản lý Yêu cầu Đầu vào
-- ✅ Thêm, sửa, xóa yêu cầu đầu vào của các chương trình
-- ✅ Tìm kiếm theo tên chương trình
-- ✅ Quản lý thông tin: chương trình, bậc học, điểm GPA, IELTS, TOEFL, SAT, GRE, học phí, deadline
-- ✅ Yêu cầu bổ sung cho từng chương trình
+Chatbot trả lời nhất quán theo cấu trúc:
 
-### 3. So sánh Chương trình
-- ✅ Chọn nhiều chương trình để so sánh
-- ✅ Hiển thị chi tiết yêu cầu đầu vào của từng chương trình
-- ✅ Phân tích thống kê: GPA, IELTS, học phí cao nhất/thấp nhất/trung bình
-- ✅ Sắp xếp theo thứ hạng trường
+GPA tối thiểu
 
-## Yêu cầu Hệ thống
+Yêu cầu IELTS/TOEFL
 
-- Python 3.7 trở lên
-- MySQL Server 5.7 trở lên
-- Windows/Linux/MacOS
+Học phí trung bình mỗi năm
 
-## Cài đặt
+Cơ hội học bổng
 
-### Bước 1: Cài đặt Python packages
-```bash
-pip install -r requirements.txt
-```
+Vị trí & ngành mạnh
 
-### Bước 2: Cài đặt MySQL
-1. Tải và cài đặt MySQL Server từ: https://dev.mysql.com/downloads/mysql/
-2. Khởi động MySQL Server
-3. Tạo user và password (hoặc sử dụng root)
+📊 So sánh nhiều trường
 
-### Bước 3: Tạo Database
-1. Mở MySQL Workbench hoặc command line
-2. Chạy script SQL từ file `database_schema.sql`:
+Khi người dùng yêu cầu, chatbot tự động tạo:
 
-**Cách 1: Sử dụng MySQL Workbench**
-- Mở MySQL Workbench
-- File → Open SQL Script → Chọn file `database_schema.sql`
-- Nhấn nút Execute (⚡)
+Bảng so sánh
 
-**Cách 2: Sử dụng Command Line**
-```bash
-mysql -u root -p < database_schema.sql
-```
+Danh sách rõ ràng
 
-### Bước 4: Cấu hình kết nối Database
-Mở file `config.py` và chỉnh sửa thông tin kết nối:
+Thông tin ngắn gọn, dễ đọc
 
-```python
-DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',           # Thay bằng username của bạn
-    'password': 'your_password',  # Thay bằng password của bạn
-    'database': 'university_comparison'
-}
-```
+⚡ Streaming Real-time
 
-## Chạy ứng dụng
+Phản hồi được đẩy ra từng phần, giống ChatGPT thật:
 
-```bash
-python main.py
-```
+Hiển thị mượt
 
-## Cấu trúc Project
+Không bị đơ UI
 
-```
-final_project/
+Dùng Threading để tránh treo giao diện
+
+🧩 Cấu trúc project rõ ràng
+
+Tách thành nhiều file:
+
+app.py – file chạy chính
+
+ui.py – giao diện Tkinter
+
+chatlogic.py – xử lý API & stream
+
+config.py – chứa system prompt + lịch sử chat
+
+📁 Cấu trúc thư mục
+duhoc_chatbot/
 │
-├── main.py                    # File chính chạy ứng dụng
-├── database.py                # Module quản lý kết nối database
-├── crud_operations.py         # Module xử lý CRUD operations
-├── config.py                  # File cấu hình
-├── database_schema.sql        # Script tạo database và dữ liệu mẫu
-├── requirements.txt           # Danh sách thư viện cần thiết
-└── README.md                  # Hướng dẫn sử dụng
-```
+├── app.py          # Điểm khởi chạy ứng dụng
+├── ui.py           # Giao diện Tkinter
+├── chatlogic.py    # Logic gọi API + streaming
+├── config.py       # Prompt hệ thống & lịch sử hội thoại
+└── README.md       # Tài liệu hướng dẫn
 
-## Thiết kế Database
+🛠️ Cài đặt
+1. Cài Python (3.8+)
 
-### Bảng `universities`
-Lưu trữ thông tin các trường đại học:
-- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
-- `university_name` (VARCHAR 255)
-- `country` (VARCHAR 100)
-- `city` (VARCHAR 100)
-- `ranking` (INT)
-- `website` (VARCHAR 255)
-- `established_year` (INT)
-- `created_at`, `updated_at` (TIMESTAMP)
+Nếu chưa có Python:
+https://www.python.org/downloads/
 
-### Bảng `admission_requirements`
-Lưu trữ yêu cầu đầu vào:
-- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
-- `university_id` (INT, FOREIGN KEY)
-- `program_name` (VARCHAR 255)
-- `degree_level` (ENUM: Bachelor, Master, PhD, Diploma)
-- `min_gpa` (DECIMAL 3,2)
-- `min_ielts` (DECIMAL 3,1)
-- `min_toefl` (INT)
-- `min_sat` (INT)
-- `min_gre` (INT)
-- `tuition_fee_usd` (DECIMAL 10,2)
-- `application_deadline` (DATE)
-- `additional_requirements` (TEXT)
-- `created_at`, `updated_at` (TIMESTAMP)
+2. Cài thư viện cần thiết
+pip install g4f
 
-## Hướng dẫn Sử dụng
 
-### 1. Tab Quản lý Trường Đại học
-1. **Thêm trường mới:**
-   - Nhập thông tin vào các trường
-   - Nhấn nút "Thêm"
+⚠️ Tkinter thường có sẵn trong Python trên Windows & Linux.
+Nếu không có, bạn phải cài thêm (tùy OS).
 
-2. **Cập nhật trường:**
-   - Double-click vào dòng cần sửa trong bảng
-   - Chỉnh sửa thông tin
-   - Nhấn nút "Cập nhật"
+🚀 Chạy ứng dụng
 
-3. **Xóa trường:**
-   - Click chọn dòng cần xóa
-   - Nhấn nút "Xóa"
-   - Xác nhận xóa
+Trong thư mục project:
 
-4. **Tìm kiếm:**
-   - Nhập từ khóa vào ô tìm kiếm
-   - Nhấn nút "Tìm"
+python app.py
 
-### 2. Tab Quản lý Yêu cầu Đầu vào
-1. **Thêm yêu cầu mới:**
-   - Chọn trường từ dropdown
-   - Nhập thông tin chương trình
-   - Nhập các yêu cầu (GPA, IELTS, TOEFL, SAT, GRE)
-   - Nhập học phí và deadline (định dạng: YYYY-MM-DD)
-   - Nhấn nút "Thêm"
+🧠 Công nghệ sử dụng
 
-2. **Cập nhật/Xóa:**
-   - Tương tự như tab Quản lý Trường
+Python 3
 
-### 3. Tab So sánh Chương trình
-1. Click vào checkbox (☐) bên trái để chọn chương trình
-2. Chọn ít nhất 2 chương trình
-3. Nhấn nút "So sánh"
-4. Xem kết quả so sánh chi tiết trong cửa sổ mới
+Tkinter cho giao diện GUI
 
-## Dữ liệu Mẫu
+g4f (GPT-4o-mini) để gọi mô hình AI
 
-Ứng dụng đã được tích hợp sẵn dữ liệu mẫu của 8 trường đại học hàng đầu:
-- Harvard University (USA)
-- Stanford University (USA)
-- University of Oxford (UK)
-- University of Cambridge (UK)
-- MIT (USA)
-- National University of Singapore (Singapore)
-- University of Toronto (Canada)
-- University of Melbourne (Australia)
+Threading để xử lý streaming không khóa UI
 
-Với 11 chương trình đào tạo ở các bậc học khác nhau.
+📝 Mô tả hoạt động
 
-## Xử lý Lỗi Thường gặp
+Người dùng nhập câu hỏi vào ô input
 
-### Lỗi: "Không thể kết nối database"
-- Kiểm tra MySQL Server đã chạy chưa
-- Kiểm tra thông tin trong `config.py` (user, password, host)
-- Đảm bảo database `university_comparison` đã được tạo
+Giao diện gửi câu hỏi cho chatlogic.send_message()
 
-### Lỗi: "Import mysql.connector could not be resolved"
-- Chạy: `pip install mysql-connector-python`
+Hàm ask_g4f_stream() tạo request đến g4f và stream kết quả
 
-### Lỗi: "Table doesn't exist"
-- Chạy lại script `database_schema.sql` để tạo các bảng
+Nội dung được đổ ra ScrolledText theo thời gian thực
 
-## Tác giả
+Lịch sử hội thoại được lưu vào chat_history
 
-Project được phát triển bởi GitHub Copilot
+📦 Dễ mở rộng
 
-## License
+Bạn có thể:
 
-MIT License
+Đổi theme giao diện (dark mode)
+
+Kết nối API trả phí của OpenAI
+
+Xuất lịch sử chat ra file
+
+Tích hợp thêm giọng nói (speech-to-text)
+
+Đóng gói thành file .exe bằng PyInstaller
+
+📄 License
+
+Bạn được phép sử dụng, chỉnh sửa, hoặc tích hợp vào dự án cá nhân/đồ án.
