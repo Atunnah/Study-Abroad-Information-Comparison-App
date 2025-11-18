@@ -1,81 +1,94 @@
-# 1. Giới thiệu
-- Dự án xây dựng ứng dụng cung cấp thông tin về các trường đại học nước ngoài, sử dụng tkinter và sqlite3
-- Các chức năng chính:
-+ Thêm, sửa, xóa thông tin các nước, các trường đại học (admin)
-+ Quản lý thông tin người dùng (admin)
-+ Trực quan hóa, so sánh thông tin các trường
-+ Tìm kiếm, xem thông tin các nước, các trường
-+ Chatbot AI hỗ trợ gợi ý trường đại học phù hợp với thông tin người dùng cung cấp
-+ Đăng ký, đăng nhập, đăng xuất
+# Study Abroad Information & Comparison App  
+**Ứng dụng tư vấn du học – Tìm kiếm, so sánh trường đại học & học bổng quốc tế**
 
-# 2. Cấu trúc dự án
-- Dự án bao gồm các file:
-+ app.py: file chính chạy ứng dụng
-+ auth.py: quản lý xác thực đăng nhập, đăng ký
-+ countries_tab.py: tab quản lý thông tin các nước
-+ database.py: khởi tạo, kết nối database, các hàm quản lý thông tin người dùng (insert, delete, register,...), khởi tạo tài khoản admin
-+ fetch_data_new_version.ipynb: file notebook khởi tạo database, lấy thông tin các nước và một số thông tin các trường đại học từ API (chạy lần đầu)
-+ placeholder_tabs.py: hai tab so sánh (trực quan hóa) và chatbot (về sau sẽ tách riêng thành hai tab, hiện đang gộp)
-+ universities_db.db: file database sqlite3
-+ universities.py: tab quản lý thông tin các trường đại học
-+ user_management.py: tab quản lý thông tin cá nhân user
+## 1. Giới thiệu dự án
 
-# 3. Cấu trúc database
-## Các bảng
-### 1. `user` – Người dùng hệ thống
-| Trường         | Kiểu dữ liệu       | Ràng buộc                  | Mô tả                          |
-|----------------|--------------------|----------------------------|--------------------------------|
-| `uid`          | INTEGER            | PRIMARY KEY AUTOINCREMENT  | ID người dùng                  |
-| `email`        | TEXT               | UNIQUE NOT NULL            | Email đăng nhập (duy nhất)     |
-| `password`     | TEXT               | NOT NULL                   | Mật khẩu (đã hash)             |
-| `full_name`    | TEXT               |                            | Họ và tên                      |
-| `address`      | TEXT               |                            | Địa chỉ                        |
-| `phone`        | TEXT               |                            | Số điện thoại                  |
-| `is_admin`     | BOOLEAN            | DEFAULT 0                  | Quyền admin (0 = user, 1 = admin) |
+Ứng dụng desktop được xây dựng bằng **Python + Tkinter + SQLite3**, giúp người dùng:
+- Tìm kiếm thông tin các trường đại học nước ngoài
+- So sánh học phí, yêu cầu đầu vào, số lượng ngành học
+- Xem danh sách học bổng theo trường
+- Nhận gợi ý trường phù hợp qua **Chatbot AI**
+- Quản lý thông tin quốc gia, trường học, người dùng (dành cho Admin)
 
-### 2. `countries` – Quốc gia
-| Trường       | Kiểu dữ liệu | Ràng buộc              | Mô tả                          |
-|--------------|--------------|------------------------|--------------------------------|
-| `id`         | INTEGER      | PRIMARY KEY AUTOINCREMENT | ID quốc gia                 |
-| `code`       | TEXT         | UNIQUE NOT NULL        | Mã quốc gia (VD: US, VN, AU)   |
-| `name`       | TEXT         | NOT NULL               | Tên quốc gia                   |
-| `flag_url`   | TEXT         |                        | Link ảnh cờ quốc gia           |
+### Chức năng chính
+- Đăng ký / Đăng nhập / Đăng xuất
+- Quản lý người dùng (Admin)
+- Thêm / Sửa / Xóa thông tin Quốc gia & Trường đại học (Admin)
+- Tìm kiếm & lọc trường theo nhiều tiêu chí
+- Trực quan hóa & so sánh các trường (biểu đồ)
+- Chatbot AI gợi ý trường phù hợp
+- Xem chi tiết học bổng của từng trường
 
-### 3. `universities` – Trường đại học
+## 2. Cấu trúc thư mục dự án
+Study-Abroad-Information-Comparison-App/
+├── app.py                     # File chính khởi chạy ứng dụng
+├── auth.py                    # Xử lý đăng ký, đăng nhập, đăng xuất
+├── database.py                # Kết nối DB, khởi tạo bảng, tài khoản admin mặc định
+├── countries_tab.py           # Tab quản lý quốc gia (CRUD - Admin)
+├── universities.py            # Tab quản lý trường đại học (CRUD - Admin)
+├── user_management.py         # Tab quản lý thông tin người dùng (Admin)
+├── placeholder_tabs.py        # Tab So sánh (Visualization) + Chatbot (sẽ tách riêng sau)
+├── fetch_data_new_version.ipynb # Notebook lấy dữ liệu từ API & khởi tạo DB lần đầu
+├── universities_db.db         # File database SQLite (tạo tự động nếu chưa có)
+└── README.md                  # Tài liệu này
+
+
+## 3. Cấu trúc Cơ sở dữ liệu (SQLite)
+
+### Các bảng chính
+
+#### 1. `user` – Người dùng hệ thống
+| Trường         | Kiểu dữ liệu       | Ràng buộc                       | Mô tả                              |
+|----------------|--------------------|---------------------------------|------------------------------------|
+| `uid`          | INTEGER            | PRIMARY KEY AUTOINCREMENT       | ID người dùng                      |
+| `email`        | TEXT               | UNIQUE NOT NULL                 | Email đăng nhập                    |
+| `password`     | TEXT               | NOT NULL                        | Mật khẩu (đã được hash)            |
+| `full_name`    | TEXT               |                                 | Họ tên                             |
+| `address`      | TEXT               |                                 | Địa chỉ                            |
+| `phone`        | TEXT               |                                 | Số điện thoại                      |
+| `is_admin`     | BOOLEAN            | DEFAULT 0                       | 1 = Admin, 0 = User thường         |
+
+#### 2. `countries` – Quốc gia
+| Trường       | Kiểu dữ liệu | Ràng buộc                  | Mô tả                          |
+|--------------|--------------|----------------------------|--------------------------------|
+| `id`         | INTEGER      | PRIMARY KEY AUTOINCREMENT  | ID quốc gia                    |
+| `code`       | TEXT         | UNIQUE NOT NULL            | Mã ISO (US, GB, AU, CA...)     |
+| `name`       | TEXT         | NOT NULL                   | Tên quốc gia                   |
+| `flag_url`   | TEXT         |                            | Link ảnh cờ (dùng hiển thị)    |
+
+#### 3. `universities` – Trường đại học
 | Trường                | Kiểu dữ liệu | Ràng buộc                          | Mô tả                                                              |
 |-----------------------|--------------|------------------------------------|--------------------------------------------------------------------|
 | `id`                  | INTEGER      | PRIMARY KEY AUTOINCREMENT          | ID trường                                                          |
 | `name`                | TEXT         | NOT NULL                           | Tên trường                                                         |
-| `country_id`          | INTEGER      | FOREIGN KEY → countries(id)        | Quốc gia trường thuộc về                                           |
+| `country_id`          | INTEGER      | FOREIGN KEY → countries(id)        | Thuộc quốc gia nào                                                 |
 | `state`               | TEXT         |                                    | Bang/Tỉnh (nếu có)                                                 |
-| `domain`              | TEXT         |                                    | Domain email chính thức (vd: harvard.edu)                          |
-| `website`             | TEXT         |                                    | Website chính thức                                                 |
+| `domain`              | TEXT         |                                    | Domain email chính thức                                            |
+| `website`             | TEXT         |                                    | Website trường                                                     |
 | `num_majors`          | INTEGER      |                                    | Số lượng ngành học                                                 |
 | `tuition_fee_avg`     | REAL         |                                    | Học phí trung bình/năm (USD)                                       |
-| `entry_requirements`  | TEXT         |                                    | Yêu cầu đầu vào (IELTS, GPA, v.v.), lưu dưới dạng chuỗi json       |
+| `entry_requirements`  | TEXT         |                                    | Yêu cầu đầu vào (lưu dạng JSON string)                             |
 
-### 4. `scholarships` – Học bổng
+#### 4. `scholarships` – Học bổng
 | Trường         | Kiểu dữ liệu | Ràng buộc                             | Mô tả                                |
 |----------------|--------------|---------------------------------------|--------------------------------------|
 | `id`           | INTEGER      | PRIMARY KEY AUTOINCREMENT             | ID học bổng                          |
 | `name`         | TEXT         | NOT NULL                              | Tên học bổng                         |
-| `university_id`| INTEGER      | FOREIGN KEY → universities(id)        | Trường cung cấp học bổng             |
-| `value`        | REAL         |                                       | Giá trị học bổng (USD hoặc %)        |
-| `duration`     | TEXT         |                                       | Thời hạn (1 năm, 4 năm, toàn khóa…)  |
-| `criteria`     | TEXT         |                                       | Tiêu chí xét học bổng                |
+| `university_id`| INTEGER      | FOREIGN KEY → universities(id)        | Trường cung cấp                      |
+| `value`        | REAL         |                                       | Giá trị (USD hoặc %)                 |
+| `duration`     | TEXT         |                                       | Thời gian áp dụng                    |
+| `criteria`     | TEXT         |                                       | Tiêu chí xét tuyển                   |
 
----
-
-## Sơ đồ ERD (Entity Relationship Diagram)
+### Sơ đồ ERD
 
 ```mermaid
 erDiagram
-    countries ||--o{ universities : "có nhiều"
+    countries ||--o{ universities : "chứa nhiều"
     universities ||--o{ scholarships : "cung cấp nhiều"
 
     countries {
         int id PK
-        string code UK
+        string code UK "US, GB, AU..."
         string name
         string flag_url
     }
@@ -89,7 +102,7 @@ erDiagram
         string website
         int num_majors
         float tuition_fee_avg
-        string entry_requirements
+        string entry_requirements "JSON string"
     }
 
     scholarships {
@@ -108,12 +121,31 @@ erDiagram
         string full_name
         string address
         string phone
-        bool is_admin
+        bool is_admin "0=user, 1=admin"
     }
 ```
+## 4. Hướng dẫn cài đặt và chạy dự án
+### 1. Clone dự án (branch tuan)
+git clone -b tuan --single-branch https://github.com/Atunnah/Study-Abroad-Information-Comparison-App.git
+cd Study-Abroad-Information-Comparison-App
 
-# 4. Hướng dẫn cài đặt
-Bước 1: Clone code về local từ branch tuan: git clone -b tuan --single-branch https://github.com/Atunnah/Study-Abroad-Information-Comparison-App
-Bước 2: Chạy file app.py
-Bước 3: Phát triển các chức năng trong các tab như mô tả ở phía trên
+### 2. (Tùy chọn) Tạo virtual environment
+python -m venv venv
+source venv/bin/activate    # Windows: venv\Scripts\activate
 
+### 3. Cài đặt thư viện cần thiết
+pip install requests pillow
+
+### 4. Chạy lần đầu để tạo database (nếu chưa có)
+####    Mở và chạy file: fetch_data_new_version.ipynb
+####    Hoặc ứng dụng sẽ tự tạo DB khi chạy lần đầu
+
+### 5. Khởi chạy ứng dụng
+python app.py
+
+## 5. Phát triển thêm
+### 1. Tách riêng hai tab So sánh và Chatbot
+### 2. Truy vấn data từ database, tạo biểu đồ so sánh các trường với matplotlib, seaborn
+### 3. Tích hợp chức năng chatbot
+### 4. Tối ưu giao diện
+### 5. ......
