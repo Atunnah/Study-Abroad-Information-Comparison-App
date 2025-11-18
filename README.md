@@ -20,17 +20,20 @@
 - Xem chi tiết học bổng của từng trường
 
 ## 2. Cấu trúc thư mục dự án
+
+```
 Study-Abroad-Information-Comparison-App/
-├── app.py                     # File chính khởi chạy ứng dụng
-├── auth.py                    # Xử lý đăng ký, đăng nhập, đăng xuất
-├── database.py                # Kết nối DB, khởi tạo bảng, tài khoản admin mặc định
-├── countries_tab.py           # Tab quản lý quốc gia (CRUD - Admin)
-├── universities.py            # Tab quản lý trường đại học (CRUD - Admin)
-├── user_management.py         # Tab quản lý thông tin người dùng (Admin)
-├── placeholder_tabs.py        # Tab So sánh (Visualization) + Chatbot (sẽ tách riêng sau)
-├── fetch_data_new_version.ipynb # Notebook lấy dữ liệu từ API & khởi tạo DB lần đầu
-├── universities_db.db         # File database SQLite (tạo tự động nếu chưa có)
-└── README.md                  # Tài liệu này
+├── app.py                         # File chính khởi chạy ứng dụng
+├── auth.py                        # Xử lý đăng ký, đăng nhập, đăng xuất
+├── database.py                    # Kết nối DB, khởi tạo bảng, tài khoản admin mặc định
+├── countries_tab.py               # Tab quản lý quốc gia (CRUD - Admin)
+├── universities.py                # Tab quản lý trường đại học (CRUD - Admin)
+├── user_management.py             # Tab quản lý thông tin người dùng (Admin)
+├── placeholder_tabs.py            # Tab So sánh (Visualization) + Chatbot (sẽ tách riêng sau)
+├── fetch_data_new_version.ipynb   # Notebook lấy dữ liệu API & khởi tạo DB lần đầu
+├── universities_db.db             # File database SQLite (tự tạo nếu chưa có)
+└── README.md                      # Tài liệu dự án
+```
 
 
 ## 3. Cấu trúc Cơ sở dữ liệu (SQLite)
