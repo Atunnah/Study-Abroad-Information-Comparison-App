@@ -129,15 +129,17 @@ erDiagram
 ```
 ## 4. Hướng dẫn cài đặt và chạy dự án
 ### 1. Clone dự án (branch tuan)
-git clone -b tuan --single-branch https://github.com/Atunnah/Study-Abroad-Information-Comparison-App.git
+```
+git clone -b tuan --single-branch https://github.com/Atunnah/Study-Abroad-Information-Comparison-App
 cd Study-Abroad-Information-Comparison-App
-
+```
 ### 2. (Tùy chọn) Tạo virtual environment
+```
 python -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
-
+```
 ### 3. Cài đặt thư viện cần thiết
-pip install requests pillow
+pip install requests matplotlib
 
 ### 4. Chạy lần đầu để tạo database (nếu chưa có)
 ####    Mở và chạy file: fetch_data_new_version.ipynb
