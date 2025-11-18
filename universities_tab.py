@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Toplevel
+from unittest import result
 from database import execute_db
 import json
 
@@ -437,27 +438,29 @@ class UniversitiesTab:
         
         # Insert university
         result = execute_db("""INSERT INTO universities 
-                        (name, country_id, state, domain, website, num_majors, tuition_fee_avg, entry_requirements) 
-                        VALUES (?,?,?,?,?,?,?,?)""",
-                     (name, country_id, state, domain, website, num_majors_int, tuition_fee_float, entry_requirements_json),
-                     fetch=True)
-        
-        if result is not None:
+                (name, country_id, state, domain, website, num_majors, tuition_fee_avg, entry_requirements) 
+                VALUES (?,?,?,?,?,?,?,?)""",
+             (name, country_id, state, domain, website, num_majors_int, tuition_fee_float, entry_requirements_json),
+             fetch=False)  # <-- fetch=False cho INSERT
+
+        if result:  # True nếu insert thành công
             # Get the newly inserted university ID
             uni_id = execute_db("SELECT last_insert_rowid()", fetch=True)[0][0]
-            
+
             # Insert scholarships
             for schol in self.scholarships_list:
                 execute_db("""INSERT INTO scholarships 
                             (name, university_id, value, duration, criteria) 
                             VALUES (?,?,?,?,?)""",
-                         (schol['name'], uni_id, schol['value'], schol['duration'], schol['criteria']))
-            
+                         (schol['name'], uni_id, schol['value'], schol['duration'], schol['criteria']),
+                         fetch=False)
+
             messagebox.showinfo("Success", "University added with scholarships!")
             self.clear_inputs()
             self.refresh()
         else:
             messagebox.showerror("Error", "Failed to add university")
+
             
     def on_select(self, event):
         if not self.is_admin:

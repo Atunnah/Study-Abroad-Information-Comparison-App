@@ -2,7 +2,7 @@ import sqlite3
 from tkinter import messagebox
 import hashlib
 
-DB_FILE = "universities.db"
+DB_FILE = "universities_db.db"
 
 def hash_password(password):
     """Hash password using SHA256"""
