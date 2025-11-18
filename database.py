@@ -9,11 +9,12 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def init_db():
-    """Initialize all database tables"""
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    
-    # User table
+
+    # --------------------------
+    # 1. User table
+    # --------------------------
     cur.execute("""
     CREATE TABLE IF NOT EXISTS user (
         uid INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,8 +26,10 @@ def init_db():
         is_admin BOOLEAN DEFAULT 0
     )
     """)
-    
-    # Countries table
+
+    # --------------------------
+    # 2. Countries table
+    # --------------------------
     cur.execute("""
     CREATE TABLE IF NOT EXISTS countries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,21 +38,43 @@ def init_db():
         flag_url TEXT
     )
     """)
-    
-    # Universities table
+
+    # --------------------------
+    # 3. Universities table
+    # --------------------------
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS universities_basic (
+    CREATE TABLE IF NOT EXISTS universities (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
+        name TEXT NOT NULL,
         country_id INTEGER,
         state TEXT,
         domain TEXT,
         website TEXT,
+        num_majors INTEGER,
+        tuition_fee_avg REAL,
+        entry_requirements TEXT,
         FOREIGN KEY(country_id) REFERENCES countries(id)
     )
     """)
-    
-    # Create default admin account if not exists
+
+    # --------------------------
+    # 4. Scholarships table
+    # --------------------------
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS scholarships (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        university_id INTEGER,
+        value REAL,
+        duration TEXT,
+        criteria TEXT,
+        FOREIGN KEY(university_id) REFERENCES universities(id)
+    )
+    """)
+
+    # --------------------------
+    # 5. Create default admin account
+    # --------------------------
     cur.execute("SELECT * FROM user WHERE email = ?", ("admin",))
     if not cur.fetchone():
         admin_pass = hash_password("ad123")
@@ -57,9 +82,12 @@ def init_db():
             INSERT INTO user (email, password, full_name, is_admin) 
             VALUES (?, ?, ?, ?)
         """, ("admin", admin_pass, "Administrator", 1))
-    
+        print("✅ Đã tạo tài khoản admin mặc định")
+
     conn.commit()
     conn.close()
+    print("✅ Database initialized successfully")
+
 
 def execute_db(query, params=(), fetch=False):
     """Execute database query"""
