@@ -82,12 +82,28 @@ Study-Abroad-Information-Comparison-App/
 | `duration`     | TEXT         |                                       | Thời gian áp dụng                    |
 | `criteria`     | TEXT         |                                       | Tiêu chí xét tuyển                   |
 
+#### 5. `user_favorites` - Các trường yêu thích của người dùng
+
+| Trường          | Kiểu dữ liệu | Ràng buộc                                                                | Mô tả                                           |
+|-----------------|--------------|--------------------------------------------------------------------------|-------------------------------------------------|
+| `id`            | INTEGER      | PRIMARY KEY AUTOINCREMENT                                                | ID bản ghi                                      |
+| `user_id`       | INTEGER      | NOT NULL                                                                 | ID người dùng                                   |
+| `university_id` | INTEGER      | NOT NULL                                                                 | ID trường đại học được yêu thích                |
+| `created_at`    | TIMESTAMP    | DEFAULT CURRENT_TIMESTAMP                                                | Thời gian thêm vào danh sách yêu thích          |
+|                 |              | UNIQUE(user_id, university_id)                                           | 1 người Chỉ được yêu thích một trường một lần   |
+|                 |              | FOREIGN KEY(user_id) REFERENCES user(uid) ON DELETE CASCADE              |                                                 |
+|                 |              | FOREIGN KEY(university_id) REFERENCES universities(id) ON DELETE CASCADE |                                                 |
+
+
 ### Sơ đồ ERD
 
 ```mermaid
+
 erDiagram
     countries ||--o{ universities : "chứa nhiều"
     universities ||--o{ scholarships : "cung cấp nhiều"
+    user ||--o{ user_favorites : "có nhiều"
+    universities ||--o{ user_favorites : "được nhiều người thích"
 
     countries {
         int id PK
@@ -95,7 +111,6 @@ erDiagram
         string name
         string flag_url
     }
-
     universities {
         int id PK
         string name
@@ -107,7 +122,6 @@ erDiagram
         float tuition_fee_avg
         string entry_requirements "JSON string"
     }
-
     scholarships {
         int id PK
         string name
@@ -116,7 +130,6 @@ erDiagram
         string duration
         string criteria
     }
-
     user {
         int uid PK
         string email UK
@@ -125,6 +138,12 @@ erDiagram
         string address
         string phone
         bool is_admin "0=user, 1=admin"
+    }
+    user_favorites {
+        int id PK
+        int user_id FK
+        int university_id FK
+        timestamp created_at
     }
 ```
 ## 4. Hướng dẫn cài đặt và chạy dự án
