@@ -1,27 +1,11 @@
 import g4f
 
 class ChatEngine:
-    """Engine để giao tiếp với AI model"""
-    
     def __init__(self, system_prompt):
-        """
-        Khởi tạo ChatEngine
-        
-        Args:
-            system_prompt: System prompt cho AI
-        """
         self.chat_history = [{"role": "system", "content": system_prompt}]
         self.client = g4f.Client()
 
-    def ask_stream(self, user_text, output_widget, status_callback=None):
-        """
-        Gửi tin nhắn và nhận phản hồi dạng stream
-        
-        Args:
-            user_text: Nội dung tin nhắn từ user
-            output_widget: Widget để hiển thị kết quả
-            status_callback: Callback để cập nhật trạng thái
-        """
+    def ask_stream(self, user_text, output_widget, on_response_start=None, status_callback=None):
         try:
             self.chat_history.append({"role": "user", "content": user_text})
 
@@ -31,14 +15,17 @@ class ChatEngine:
                 stream=True,
             )
 
-            output_widget.config(state="normal")
-            output_widget.insert("end", "🤖 Trợ lý: ", "assistant_label")
-            output_widget.config(state="disabled")
-
             full_reply = ""
+            first_chunk = True
+            
             for chunk in stream:
                 delta = chunk.choices[0].delta
                 if hasattr(delta, "content") and delta.content:
+                    # ✅ Gọi callback khi nhận chunk đầu tiên
+                    if first_chunk and on_response_start:
+                        on_response_start()
+                        first_chunk = False
+                    
                     full_reply += delta.content
                     output_widget.config(state="normal")
                     output_widget.insert("end", delta.content, "assistant_text")
@@ -62,10 +49,4 @@ class ChatEngine:
                 status_callback(False)
 
     def clear_history(self, system_prompt):
-        """
-        Reset lịch sử chat
-        
-        Args:
-            system_prompt: System prompt mới
-        """
         self.chat_history = [{"role": "system", "content": system_prompt}]

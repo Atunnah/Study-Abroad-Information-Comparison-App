@@ -23,6 +23,8 @@ class ChatbotTab:
         self.chat_engine = ChatEngine(SYSTEM_PROMPT)
         self.is_processing = False
         self.config = ChatbotConfig()
+        self.typing_animation_running = False
+        self.typing_mark = None  # Đánh dấu vị trí của animation
         self.setup_ui()
         
     def setup_ui(self):
@@ -150,6 +152,11 @@ class ChatbotTab:
             foreground=self.config.ERROR_COLOR, 
             font=("Segoe UI", 11, "italic")
         )
+        self.output.tag_config(
+            "typing", 
+            foreground=self.config.STATUS_COLOR,
+            font=("Segoe UI", 14)
+        )
         
         # Hiển thị welcome message
         self.output.config(state="normal")
@@ -216,6 +223,59 @@ class ChatbotTab:
         )
         self.status_label.pack(pady=(5, 0))
 
+    def start_typing_animation(self):
+        """Bắt đầu animation dấu ba chấm"""
+        self.typing_animation_running = True
+        
+        # Thêm label "Trợ lý:" và đánh dấu vị trí
+        self.output.config(state="normal")
+        self.output.insert(tk.END, "🤖 Trợ lý: ", "assistant_label")
+        self.typing_mark = self.output.index(tk.END)
+        self.output.config(state="disabled")
+        
+        # Bắt đầu animation
+        self._animate_typing(0)
+    
+    def _animate_typing(self, dot_count):
+        """
+        Animation dấu ba chấm
+        
+        Args:
+            dot_count: Số lượng dấu chấm hiện tại (0-3)
+        """
+        if not self.typing_animation_running:
+            return
+        
+        # Tạo chuỗi dấu chấm
+        dots = "●" * (dot_count + 1) + "○" * (2 - dot_count)
+        
+        # Cập nhật text
+        self.output.config(state="normal")
+        
+        # Xóa dấu chấm cũ nếu có
+        if self.typing_mark:
+            self.output.delete(self.typing_mark, tk.END)
+        
+        # Thêm dấu chấm mới
+        self.output.insert(tk.END, dots, "typing")
+        self.output.see(tk.END)
+        self.output.config(state="disabled")
+        
+        # Lặp lại animation
+        next_count = (dot_count + 1) % 3
+        self.output.after(400, lambda: self._animate_typing(next_count))
+    
+    def stop_typing_animation(self):
+        """Dừng animation và xóa dấu ba chấm"""
+        self.typing_animation_running = False
+        
+        if self.typing_mark:
+            self.output.config(state="normal")
+            # Xóa dấu ba chấm
+            self.output.delete(self.typing_mark, tk.END)
+            self.output.config(state="disabled")
+            self.typing_mark = None
+
     def send_message(self):
         """Xử lý gửi tin nhắn"""
         if self.is_processing:
@@ -239,13 +299,21 @@ class ChatbotTab:
         self.is_processing = True
         self.send_btn.config(state="disabled", bg=self.config.BUTTON_DISABLED)
         self.status_label.config(text="⏳ Đang xử lý...")
+        
+        # Bắt đầu typing animation
+        self.start_typing_animation()
 
         # Gửi request trong background thread
         threading.Thread(
             target=self.chat_engine.ask_stream,
-            args=(user_text, self.output, self.update_status),
+            args=(user_text, self.output, self.on_response_start, self.update_status),
             daemon=True
         ).start()
+
+    def on_response_start(self):
+        """Callback khi bắt đầu nhận response từ AI"""
+        # Dừng typing animation
+        self.stop_typing_animation()
 
     def update_status(self, is_processing):
         """
@@ -261,6 +329,9 @@ class ChatbotTab:
 
     def clear_chat(self):
         """Xóa lịch sử chat"""
+        # Dừng animation nếu đang chạy
+        self.stop_typing_animation()
+        
         self.output.config(state="normal")
         self.output.delete(1.0, tk.END)
         self.output.insert(tk.END, self.config.WELCOME_MSG, "assistant_text")
