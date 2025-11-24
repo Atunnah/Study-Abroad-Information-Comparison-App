@@ -5,7 +5,8 @@ from auth import LoginWindow
 from countries_tab import CountriesTab
 from universities_tab import UniversitiesTab
 from user_management import UserManagementTab, ProfileTab
-from placeholder_tabs import ComparisonTab, ChatbotTab
+from placeholder_tabs import ComparisonTab
+from Phu_Chatbot.chatbot import ChatbotTab
 
 class UniversityApp:
     def __init__(self, root):
