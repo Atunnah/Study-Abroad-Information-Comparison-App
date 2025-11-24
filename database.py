@@ -3,7 +3,6 @@ from tkinter import messagebox
 import hashlib
 
 DB_FILE = "universities_db.db"
-
 def hash_password(password):
     """Hash password using SHA256"""
     return hashlib.sha256(password.encode()).hexdigest()
@@ -82,7 +81,24 @@ def init_db():
             INSERT INTO user (email, password, full_name, is_admin) 
             VALUES (?, ?, ?, ?)
         """, ("admin", admin_pass, "Administrator", 1))
-        print("✅ Đã tạo tài khoản admin mặc định")
+        print("✅ Created admin accout")
+        
+        
+     # --------------------------
+     # 6. User Favorite Universities (Many-to-Many)
+     # --------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            university_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, university_id),
+            FOREIGN KEY(user_id) REFERENCES user(uid),
+            FOREIGN KEY(university_id) REFERENCES universities(id)
+            )
+      """)
+
 
     conn.commit()
     conn.close()
@@ -140,3 +156,34 @@ def update_user_profile(uid, full_name, address, phone):
         UPDATE user SET full_name = ?, address = ?, phone = ? 
         WHERE uid = ?
     """, (full_name, address, phone, uid))
+    
+    
+def add_favorite(uid, university_id):
+    return execute_db("""
+        INSERT OR IGNORE INTO user_favorites (user_id, university_id)
+        VALUES (?, ?)
+    """, (uid, university_id))
+
+
+def remove_favorite(uid, university_id):
+    return execute_db("""
+        DELETE FROM user_favorites
+        WHERE user_id = ? AND university_id = ?
+    """, (uid, university_id))
+
+def get_user_favorites(uid):
+    return execute_db("""
+        SELECT 
+            universities.id, 
+            universities.name, 
+            countries.name,
+            user_favorites.created_at
+        FROM user_favorites
+        JOIN universities 
+            ON user_favorites.university_id = universities.id
+        LEFT JOIN countries 
+            ON universities.country_id = countries.id
+        WHERE user_favorites.user_id = ?
+        ORDER BY user_favorites.created_at DESC
+    """, (uid,), fetch=True)
+
