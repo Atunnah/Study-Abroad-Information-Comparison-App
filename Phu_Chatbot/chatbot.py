@@ -20,7 +20,7 @@ class ChatbotTab:
             parent_frame: Frame cha từ main application
         """
         self.frame = parent_frame
-        self.chat_engine = ChatEngine(SYSTEM_PROMPT)
+        self.chat_engine = ChatEngine(SYSTEM_PROMPT, db_path="universities_db.db")
         self.is_processing = False
         self.config = ChatbotConfig()
         self.typing_animation_running = False
@@ -156,6 +156,27 @@ class ChatbotTab:
             "typing", 
             foreground=self.config.STATUS_COLOR,
             font=("Segoe UI", 14)
+        )
+        self.output.tag_config(
+            "status", 
+            foreground="#9b59b6",
+            font=("Segoe UI", 10, "italic")
+        )
+        self.output.tag_config(
+            "sql", 
+            foreground="#2980b9",
+            font=("Consolas", 10),
+            background="#ecf0f1"
+        )
+        self.output.tag_config(
+            "explanation", 
+            foreground="#16a085",
+            font=("Segoe UI", 10, "italic")
+        )
+        self.output.tag_config(
+            "success", 
+            foreground="#27ae60",
+            font=("Segoe UI", 10, "bold")
         )
         
         # Hiển thị welcome message

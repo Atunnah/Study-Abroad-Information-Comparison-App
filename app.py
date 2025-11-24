@@ -12,8 +12,24 @@ class UniversityApp:
     def __init__(self, root):
         self.root = root
         self.root.title("University Management System")
-        self.root.geometry("1200x700")
-        self.root.configure(bg="#f0f0f0")
+        self.root.geometry("1400x800")
+        
+        # Modern color scheme
+        self.colors = {
+            'primary': '#2C3E50',      # Dark blue-gray
+            'secondary': '#3498DB',    # Bright blue
+            'success': '#27AE60',      # Green
+            'warning': '#F39C12',      # Orange
+            'danger': '#E74C3C',       # Red
+            'info': '#9B59B6',         # Purple
+            'light': '#ECF0F1',        # Light gray
+            'bg': '#FFFFFF',           # White background
+            'text': '#2C3E50',         # Dark text
+            'text_light': '#7F8C8D',   # Light text
+            'hover': '#34495E'         # Hover state
+        }
+        
+        self.root.configure(bg=self.colors['light'])
         
         self.current_user = None
         self.is_admin = False
@@ -21,65 +37,124 @@ class UniversityApp:
         # Create menu bar
         self.create_menu()
         
-        # Main container
-        self.main_container = tk.Frame(root, bg="#f0f0f0")
-        self.main_container.pack(fill="both", expand=True)
+        # Main container with shadow effect
+        self.main_container = tk.Frame(root, bg=self.colors['bg'], 
+                                      relief='flat', bd=0)
+        self.main_container.pack(fill="both", expand=True, padx=15, pady=15)
         
         # Show welcome screen
         self.show_welcome_screen()
         
     def create_menu(self):
-        """Create menu bar"""
-        menubar = tk.Menu(self.root)
+        """Create modern menu bar"""
+        menubar = tk.Menu(self.root, bg=self.colors['primary'], 
+                         fg='white', activebackground=self.colors['secondary'],
+                         activeforeground='white', relief='flat')
         self.root.config(menu=menubar)
         
+        
+        # Home menu
+        home_menu = tk.Menu(menubar, tearoff=0, bg='white',
+                            fg=self.colors['text'],
+                            activebackground=self.colors['secondary'],
+                            activeforeground='white')
+        menubar.add_cascade(label="  🏠 Home  ", menu=home_menu)
+
+        home_menu.add_command(label="🏠 Go to Home", command=self.show_home_screen)
+
         # File menu
-        file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tệp", menu=file_menu)
+        file_menu = tk.Menu(menubar, tearoff=0, bg='white', fg=self.colors['text'],
+                           activebackground=self.colors['secondary'], 
+                           activeforeground='white')
+        menubar.add_cascade(label="  📁 File  ", menu=file_menu)
         
         self.login_menu_item = file_menu.add_command(
-            label="Đăng nhập", command=self.show_login)
-        self.logout_menu_item = None  # Will be added after login
+            label="🔐 Login", command=self.show_login)
+        self.logout_menu_item = None
         file_menu.add_separator()
-        file_menu.add_command(label="Thoát", command=self.root.quit)
+        file_menu.add_command(label="❌ Exit", command=self.root.quit)
         
         # Data menu
-        self.data_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Dữ liệu", menu=self.data_menu)
-        self.data_menu.add_command(label="Quốc gia", command=self.show_countries, 
+        self.data_menu = tk.Menu(menubar, tearoff=0, bg='white', 
+                                fg=self.colors['text'],
+                                activebackground=self.colors['secondary'], 
+                                activeforeground='white')
+        menubar.add_cascade(label="  📊 Data  ", menu=self.data_menu)
+        self.data_menu.add_command(label="🌍 Countries", command=self.show_countries, 
                                    state="disabled")
-        self.data_menu.add_command(label="Trường đại học", command=self.show_universities, 
+        self.data_menu.add_command(label="🎓 Universities", command=self.show_universities, 
                                    state="disabled")
         
         # Tools menu
-        self.tools_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Công cụ", menu=self.tools_menu)
-        self.tools_menu.add_command(label="So sánh", command=self.show_comparison, 
+        self.tools_menu = tk.Menu(menubar, tearoff=0, bg='white', 
+                                 fg=self.colors['text'],
+                                 activebackground=self.colors['secondary'], 
+                                 activeforeground='white')
+        menubar.add_cascade(label="  🔧 Tools  ", menu=self.tools_menu)
+        self.tools_menu.add_command(label="📈 Visualization", command=self.show_comparison, 
                                     state="disabled")
-        self.tools_menu.add_command(label="Chatbot AI", command=self.show_chatbot, 
+        self.tools_menu.add_command(label="🤖 AI Assistant", command=self.show_chatbot, 
                                     state="disabled")
         
-        # User menu (will be populated after login)
-        self.user_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tài khoản", menu=self.user_menu)
+        # User menu
+        self.user_menu = tk.Menu(menubar, tearoff=0, bg='white', 
+                                fg=self.colors['text'],
+                                activebackground=self.colors['secondary'], 
+                                activeforeground='white')
+        menubar.add_cascade(label="  👤 Account  ", menu=self.user_menu)
         
     def show_welcome_screen(self):
-        """Show welcome screen before login"""
+        """Show modern welcome screen"""
         self.clear_main_container()
         
-        welcome_frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        # Gradient-like effect with multiple frames
+        top_section = tk.Frame(self.main_container, bg=self.colors['primary'], height=250)
+        top_section.pack(fill="x", side="top")
+        top_section.pack_propagate(False)
+        
+        # Welcome content in center
+        welcome_frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         welcome_frame.place(relx=0.5, rely=0.5, anchor="center")
         
-        tk.Label(welcome_frame, text="🎓", font=("Arial", 64), 
-                bg="#f0f0f0").pack(pady=20)
-        tk.Label(welcome_frame, text="HỆ THỐNG QUẢN LÝ TRƯỜNG ĐẠI HỌC", 
-                font=("Arial", 24, "bold"), bg="#f0f0f0").pack(pady=10)
-        tk.Label(welcome_frame, text="Vui lòng đăng nhập để tiếp tục", 
-                font=("Arial", 14), bg="#f0f0f0").pack(pady=10)
+        # University icon with circular background
+        icon_frame = tk.Frame(welcome_frame, bg=self.colors['secondary'], 
+                             width=140, height=140)
+        icon_frame.pack(pady=(0, 25))
+        icon_frame.pack_propagate(False)
         
-        tk.Button(welcome_frame, text="Đăng nhập", bg="#4CAF50", fg="white", 
-                 font=("Arial", 14), width=15, 
-                 command=self.show_login).pack(pady=20)
+        tk.Label(icon_frame, text="🎓", font=("Segoe UI Emoji", 72), 
+                bg=self.colors['secondary'], fg='white').place(relx=0.5, rely=0.5, 
+                                                                anchor="center")
+        
+        # Title with modern font
+        tk.Label(welcome_frame, text="University Management System", 
+                font=("Segoe UI", 32, "bold"), bg=self.colors['bg'],
+                fg=self.colors['primary']).pack(pady=(0, 10))
+        
+        # Subtitle
+        tk.Label(welcome_frame, text="Comprehensive solution for academic administration", 
+                font=("Segoe UI", 13), bg=self.colors['bg'],
+                fg=self.colors['text_light']).pack(pady=(0, 40))
+        
+        # Modern login button
+        login_btn = tk.Button(welcome_frame, text="LOGIN TO CONTINUE", 
+                             bg=self.colors['secondary'], fg="white", 
+                             font=("Segoe UI", 12, "bold"), width=25, height=2,
+                             relief='flat', cursor="hand2",
+                             activebackground=self.colors['hover'],
+                             activeforeground='white',
+                             command=self.show_login)
+        login_btn.pack(pady=10)
+        
+        # Hover effect
+        login_btn.bind('<Enter>', lambda e: login_btn.config(bg=self.colors['hover']))
+        login_btn.bind('<Leave>', lambda e: login_btn.config(bg=self.colors['secondary']))
+        
+        # Footer
+        footer = tk.Label(welcome_frame, text="Version 1.0 | © 2024 University System", 
+                         font=("Segoe UI", 9), bg=self.colors['bg'],
+                         fg=self.colors['text_light'])
+        footer.pack(pady=(50, 0))
         
     def show_login(self):
         """Show login window"""
@@ -87,92 +162,191 @@ class UniversityApp:
         
     def on_login_success(self, user_data):
         """Handle successful login"""
-        # user_data: (uid, email, full_name, address, phone, is_admin)
         self.current_user = user_data
         self.is_admin = bool(user_data[5])
         
-        # Update menu
         self.update_menu_after_login()
-        
-        # Show home screen
         self.show_home_screen()
         
     def update_menu_after_login(self):
         """Update menu items after login"""
-        # Enable data menu
-        self.data_menu.entryconfig("Quốc gia", state="normal")
-        self.data_menu.entryconfig("Trường đại học", state="normal")
+        self.data_menu.entryconfig("🌍 Countries", state="normal")
+        self.data_menu.entryconfig("🎓 Universities", state="normal")
         
-        # Enable tools menu
-        self.tools_menu.entryconfig("So sánh", state="normal")
-        self.tools_menu.entryconfig("Chatbot AI", state="normal")
+        self.tools_menu.entryconfig("📈 Visualization", state="normal")
+        self.tools_menu.entryconfig("🤖 AI Assistant", state="normal")
         
-        # Update user menu
         self.user_menu.delete(0, tk.END)
         
         if self.is_admin:
-            self.user_menu.add_command(label="Quản lý người dùng", 
+            self.user_menu.add_command(label="👥 User Management", 
                                       command=self.show_user_management)
         else:
-            self.user_menu.add_command(label="Thông tin cá nhân", 
+            self.user_menu.add_command(label="ℹ️ Account Information", 
                                       command=self.show_profile)
         
         self.user_menu.add_separator()
-        self.user_menu.add_command(label="Đăng xuất", command=self.logout)
+        self.user_menu.add_command(label="🚪 Logout", command=self.logout)
         
     def logout(self):
         """Logout user"""
-        if messagebox.askyesno("Xác nhận", "Bạn có chắc muốn đăng xuất?"):
+        if messagebox.askyesno("Confirm Logout", 
+                              "Are you sure you want to logout?",
+                              icon='question'):
             self.current_user = None
             self.is_admin = False
             
-            # Reset menu
-            self.data_menu.entryconfig("Quốc gia", state="disabled")
-            self.data_menu.entryconfig("Trường đại học", state="disabled")
-            self.tools_menu.entryconfig("So sánh", state="disabled")
-            self.tools_menu.entryconfig("Chatbot AI", state="disabled")
+            self.data_menu.entryconfig("🌍 Countries", state="disabled")
+            self.data_menu.entryconfig("🎓 Universities", state="disabled")
+            self.tools_menu.entryconfig("📈 Visualization", state="disabled")
+            self.tools_menu.entryconfig("🤖 AI Assistant", state="disabled")
             
             self.user_menu.delete(0, tk.END)
             
-            # Show welcome screen
             self.show_welcome_screen()
             
     def show_home_screen(self):
-        """Show home screen after login"""
+        """Show modern home dashboard"""
         self.clear_main_container()
         
-        home_frame = tk.Frame(self.main_container, bg="#f0f0f0")
-        home_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        # Header section
+        header = tk.Frame(self.main_container, bg=self.colors['primary'], height=120)
+        header.pack(fill="x", side="top")
+        header.pack_propagate(False)
         
-        # Welcome message
-        user_type = "Quản trị viên" if self.is_admin else "Người dùng"
-        tk.Label(home_frame, 
-                text=f"Chào mừng {user_type}: {self.current_user[2] or self.current_user[1]}", 
-                font=("Arial", 18, "bold"), bg="#f0f0f0").pack(pady=20)
+        # User info in header
+        user_type = "Administrator" if self.is_admin else "User"
+        user_name = self.current_user[2] or self.current_user[1]
         
-        # Quick access buttons
-        btn_frame = tk.Frame(home_frame, bg="#f0f0f0")
-        btn_frame.pack(pady=30)
+        header_content = tk.Frame(header, bg=self.colors['primary'])
+        header_content.pack(expand=True)
         
-        tk.Button(btn_frame, text="📚 Quản lý Quốc gia", 
-                 font=("Arial", 12), width=20, height=3,
-                 bg="#4CAF50", fg="white", 
-                 command=self.show_countries).grid(row=0, column=0, padx=10, pady=10)
+        tk.Label(header_content, text=f"Welcome back, {user_name}!", 
+                font=("Segoe UI", 24, "bold"), bg=self.colors['primary'],
+                fg='white').pack(pady=(10, 0))
         
-        tk.Button(btn_frame, text="🎓 Quản lý Trường ĐH", 
-                 font=("Arial", 12), width=20, height=3,
-                 bg="#2196F3", fg="white", 
-                 command=self.show_universities).grid(row=0, column=1, padx=10, pady=10)
+        tk.Label(header_content, text=f"Role: {user_type}", 
+                font=("Segoe UI", 12), bg=self.colors['primary'],
+                fg=self.colors['light']).pack()
         
-        tk.Button(btn_frame, text="🔍 So sánh", 
-                 font=("Arial", 12), width=20, height=3,
-                 bg="#FF9800", fg="white", 
-                 command=self.show_comparison).grid(row=1, column=0, padx=10, pady=10)
+        # Main content area
+        content = tk.Frame(self.main_container, bg=self.colors['bg'])
+        content.pack(fill="both", expand=True, padx=40, pady=40)
         
-        tk.Button(btn_frame, text="🤖 Chatbot AI", 
-                 font=("Arial", 12), width=20, height=3,
-                 bg="#9C27B0", fg="white", 
-                 command=self.show_chatbot).grid(row=1, column=1, padx=10, pady=10)
+        # Dashboard title
+        tk.Label(content, text="Quick Access Dashboard", 
+                font=("Segoe UI", 18, "bold"), bg=self.colors['bg'],
+                fg=self.colors['primary']).pack(pady=(0, 30))
+        
+        # Cards container
+        cards_frame = tk.Frame(content, bg=self.colors['bg'])
+        cards_frame.pack(expand=True)
+        
+        # Define cards with modern styling
+        cards = [
+            {
+                'title': 'Countries',
+                'icon': '🌍',
+                'desc': 'Manage country data',
+                'color': self.colors['success'],
+                'command': self.show_countries,
+                'row': 0, 'col': 0
+            },
+            {
+                'title': 'Universities',
+                'icon': '🎓',
+                'desc': 'Manage universities',
+                'color': self.colors['secondary'],
+                'command': self.show_universities,
+                'row': 0, 'col': 1
+            },
+            {
+                'title': 'Visualization',
+                'icon': '📈',
+                'desc': 'Data analytics & charts',
+                'color': self.colors['warning'],
+                'command': self.show_comparison,
+                'row': 1, 'col': 0
+            },
+            {
+                'title': 'AI Assistant',
+                'icon': '🤖',
+                'desc': 'Intelligent chatbot',
+                'color': self.colors['info'],
+                'command': self.show_chatbot,
+                'row': 1, 'col': 1
+            }
+        ]
+        
+        # Create modern cards
+        for card in cards:
+            self.create_dashboard_card(cards_frame, card)
+    
+    def create_dashboard_card(self, parent, card_info):
+        """Create modern dashboard card"""
+        card = tk.Frame(parent, bg='white', relief='flat', 
+                       highlightbackground=self.colors['light'],
+                       highlightthickness=2)
+        card.grid(row=card_info['row'], column=card_info['col'], 
+                 padx=20, pady=20, sticky='nsew')
+        
+        # Configure grid weights
+        parent.grid_rowconfigure(card_info['row'], weight=1)
+        parent.grid_columnconfigure(card_info['col'], weight=1)
+        
+        # Card content
+        card_content = tk.Frame(card, bg='white')
+        card_content.pack(expand=True, fill='both', padx=30, pady=30)
+        
+        # Icon with colored background
+        icon_bg = tk.Frame(card_content, bg=card_info['color'], 
+                          width=80, height=80)
+        icon_bg.pack(pady=(0, 20))
+        icon_bg.pack_propagate(False)
+        
+        tk.Label(icon_bg, text=card_info['icon'], font=("Segoe UI Emoji", 36),
+                bg=card_info['color'], fg='white').place(relx=0.5, rely=0.5, 
+                                                          anchor="center")
+        
+        # Title
+        tk.Label(card_content, text=card_info['title'], 
+                font=("Segoe UI", 16, "bold"), bg='white',
+                fg=self.colors['primary']).pack()
+        
+        # Description
+        tk.Label(card_content, text=card_info['desc'], 
+                font=("Segoe UI", 10), bg='white',
+                fg=self.colors['text_light']).pack(pady=(5, 20))
+        
+        # Button
+        btn = tk.Button(card_content, text="OPEN", 
+                       bg=card_info['color'], fg='white',
+                       font=("Segoe UI", 10, "bold"), width=15,
+                       relief='flat', cursor="hand2",
+                       activebackground=self.colors['hover'],
+                       activeforeground='white',
+                       command=card_info['command'])
+        btn.pack()
+        
+        # Hover effects for card
+        def on_enter(e):
+            card.config(highlightbackground=card_info['color'], 
+                       highlightthickness=3)
+            btn.config(bg=self.colors['hover'])
+        
+        def on_leave(e):
+            card.config(highlightbackground=self.colors['light'], 
+                       highlightthickness=2)
+            btn.config(bg=card_info['color'])
+        
+        card.bind('<Enter>', on_enter)
+        card.bind('<Leave>', on_leave)
+        for child in card.winfo_children():
+            child.bind('<Enter>', on_enter)
+            child.bind('<Leave>', on_leave)
+            for subchild in child.winfo_children():
+                subchild.bind('<Enter>', on_enter)
+                subchild.bind('<Leave>', on_leave)
         
     def clear_main_container(self):
         """Clear all widgets in main container"""
@@ -184,7 +358,7 @@ class UniversityApp:
         if not self.current_user:
             return
         self.clear_main_container()
-        frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
         CountriesTab(frame, is_admin=self.is_admin)
         
@@ -193,25 +367,25 @@ class UniversityApp:
         if not self.current_user:
             return
         self.clear_main_container()
-        frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
-        UniversitiesTab(frame, is_admin=self.is_admin)
+        UniversitiesTab(frame, uid=self.current_user[0], is_admin=self.is_admin)
         
     def show_comparison(self):
-        """Show comparison feature (placeholder)"""
+        """Show comparison feature"""
         if not self.current_user:
             return
         self.clear_main_container()
-        frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
         ComparisonTab(frame)
         
     def show_chatbot(self):
-        """Show chatbot feature (placeholder)"""
+        """Show chatbot feature"""
         if not self.current_user:
             return
         self.clear_main_container()
-        frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
         ChatbotTab(frame)
         
@@ -220,7 +394,7 @@ class UniversityApp:
         if not self.current_user or not self.is_admin:
             return
         self.clear_main_container()
-        frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
         UserManagementTab(frame)
         
@@ -229,7 +403,7 @@ class UniversityApp:
         if not self.current_user:
             return
         self.clear_main_container()
-        frame = tk.Frame(self.main_container, bg="#f0f0f0")
+        frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
         ProfileTab(frame, self.current_user)
 
