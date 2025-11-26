@@ -39,7 +39,7 @@ class UniversityApp:
         
         # Main container with shadow effect
         self.main_container = tk.Frame(root, bg=self.colors['bg'], 
-                                      relief='flat', bd=0)
+                                     relief='flat', bd=0)
         self.main_container.pack(fill="both", expand=True, padx=15, pady=15)
         
         # Show welcome screen
@@ -55,9 +55,9 @@ class UniversityApp:
         
         # Home menu
         home_menu = tk.Menu(menubar, tearoff=0, bg='white',
-                            fg=self.colors['text'],
-                            activebackground=self.colors['secondary'],
-                            activeforeground='white')
+                           fg=self.colors['text'],
+                           activebackground=self.colors['secondary'],
+                           activeforeground='white')
         menubar.add_cascade(label="  🏠 Home  ", menu=home_menu)
 
         home_menu.add_command(label="🏠 Go to Home", command=self.show_home_screen)
@@ -124,7 +124,7 @@ class UniversityApp:
         
         tk.Label(icon_frame, text="🎓", font=("Segoe UI Emoji", 72), 
                 bg=self.colors['secondary'], fg='white').place(relx=0.5, rely=0.5, 
-                                                                anchor="center")
+                                                               anchor="center")
         
         # Title with modern font
         tk.Label(welcome_frame, text="University Management System", 
@@ -180,10 +180,10 @@ class UniversityApp:
         
         if self.is_admin:
             self.user_menu.add_command(label="👥 User Management", 
-                                      command=self.show_user_management)
+                                     command=self.show_user_management)
         else:
             self.user_menu.add_command(label="ℹ️ Account Information", 
-                                      command=self.show_profile)
+                                     command=self.show_profile)
         
         self.user_menu.add_separator()
         self.user_menu.add_command(label="🚪 Logout", command=self.logout)
@@ -284,9 +284,10 @@ class UniversityApp:
     
     def create_dashboard_card(self, parent, card_info):
         """Create modern dashboard card"""
+        # Logic: Để frame có thể click được, ta gán sự kiện Button-1 và đổi cursor thành hand2
         card = tk.Frame(parent, bg='white', relief='flat', 
                        highlightbackground=self.colors['light'],
-                       highlightthickness=2)
+                       highlightthickness=2, cursor="hand2")
         card.grid(row=card_info['row'], column=card_info['col'], 
                  padx=20, pady=20, sticky='nsew')
         
@@ -295,38 +296,52 @@ class UniversityApp:
         parent.grid_columnconfigure(card_info['col'], weight=1)
         
         # Card content
-        card_content = tk.Frame(card, bg='white')
+        card_content = tk.Frame(card, bg='white', cursor="hand2")
         card_content.pack(expand=True, fill='both', padx=30, pady=30)
         
         # Icon with colored background
         icon_bg = tk.Frame(card_content, bg=card_info['color'], 
-                          width=80, height=80)
+                          width=80, height=80, cursor="hand2")
         icon_bg.pack(pady=(0, 20))
         icon_bg.pack_propagate(False)
         
-        tk.Label(icon_bg, text=card_info['icon'], font=("Segoe UI Emoji", 36),
-                bg=card_info['color'], fg='white').place(relx=0.5, rely=0.5, 
-                                                          anchor="center")
+        # Icon label
+        icon_label = tk.Label(icon_bg, text=card_info['icon'], font=("Segoe UI Emoji", 36),
+                bg=card_info['color'], fg='white', cursor="hand2")
+        icon_label.place(relx=0.5, rely=0.5, anchor="center")
         
         # Title
-        tk.Label(card_content, text=card_info['title'], 
+        title_label = tk.Label(card_content, text=card_info['title'], 
                 font=("Segoe UI", 16, "bold"), bg='white',
-                fg=self.colors['primary']).pack()
+                fg=self.colors['primary'], cursor="hand2")
+        title_label.pack()
         
         # Description
-        tk.Label(card_content, text=card_info['desc'], 
+        desc_label = tk.Label(card_content, text=card_info['desc'], 
                 font=("Segoe UI", 10), bg='white',
-                fg=self.colors['text_light']).pack(pady=(5, 20))
+                fg=self.colors['text_light'], cursor="hand2")
+        desc_label.pack(pady=(5, 20))
         
         # Button
         btn = tk.Button(card_content, text="OPEN", 
-                       bg=card_info['color'], fg='white',
-                       font=("Segoe UI", 10, "bold"), width=15,
-                       relief='flat', cursor="hand2",
-                       activebackground=self.colors['hover'],
-                       activeforeground='white',
-                       command=card_info['command'])
+                        bg=card_info['color'], fg='white',
+                        font=("Segoe UI", 10, "bold"), width=15,
+                        relief='flat', cursor="hand2",
+                        activebackground=self.colors['hover'],
+                        activeforeground='white',
+                        command=card_info['command'])
         btn.pack()
+        
+        # Logic: Hàm xử lý sự kiện click
+        def on_click(event):
+            # Gọi command được định nghĩa trong card_info
+            card_info['command']()
+
+        # Logic: Gắn sự kiện click (Button-1) cho Frame cha và tất cả widget con
+        # Lưu ý: Button đã có command riêng nên không cần bind
+        widgets_to_bind = [card, card_content, icon_bg, icon_label, title_label, desc_label]
+        for widget in widgets_to_bind:
+            widget.bind('<Button-1>', on_click)
         
         # Hover effects for card
         def on_enter(e):
@@ -339,6 +354,7 @@ class UniversityApp:
                        highlightthickness=2)
             btn.config(bg=card_info['color'])
         
+        # Logic: Bind hover effect cho toàn bộ cây widget trong card
         card.bind('<Enter>', on_enter)
         card.bind('<Leave>', on_leave)
         for child in card.winfo_children():
