@@ -5,7 +5,7 @@ from auth import LoginWindow
 from countries_tab import CountriesTab
 from universities_tab import UniversitiesTab
 from user_management import UserManagementTab, ProfileTab
-from placeholder_tabs import ComparisonTab
+from comparison_tab import ComparisonTab
 from Phu_Chatbot.chatbot import ChatbotTab
 
 class UniversityApp:
@@ -388,13 +388,12 @@ class UniversityApp:
         UniversitiesTab(frame, uid=self.current_user[0], is_admin=self.is_admin)
         
     def show_comparison(self):
-        """Show comparison feature"""
         if not self.current_user:
             return
         self.clear_main_container()
         frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
-        ComparisonTab(frame)
+        ComparisonTab(frame, current_user_data=self.current_user)
         
     def show_chatbot(self):
         """Show chatbot feature"""
