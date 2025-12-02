@@ -187,3 +187,139 @@ def get_user_favorites(uid):
         ORDER BY user_favorites.created_at DESC
     """, (uid,), fetch=True)
 
+import json 
+def get_all_countries():
+    """Get all countries for filter dropdown"""
+    return execute_db("SELECT code, name FROM countries ORDER BY name", fetch=True)
+
+def get_universities_by_criteria(criteria_key):
+    """
+    Get universities based on the selected criteria.
+    - IELTS, TOEFL, PTE, GPA: Check entry_requirements (TEXT) for keyword and NOT NULL.
+    - tuition_fee_avg: Check tuition_fee_avg (REAL) NOT NULL.
+    - majors_quantity: Check num_majors (INTEGER) NOT NULL.
+    Returns: List of (id, name, country_name, state, num_majors, tuition_fee_avg, entry_requirements)
+    """
+    if criteria_key in ["tuition_fee_avg", "majors_quantity"]:
+        column_name = {
+            "tuition_fee_avg": "tuition_fee_avg",
+            "majors_quantity": "num_majors"
+        }.get(criteria_key)
+        
+        if not column_name:
+            return []
+
+        query = f"""
+            SELECT 
+                u.id, 
+                u.name, 
+                c.name, 
+                u.state, 
+                u.num_majors, 
+                u.tuition_fee_avg, 
+                u.entry_requirements
+            FROM universities u
+            LEFT JOIN countries c ON u.country_id = c.id
+            WHERE u.{column_name} IS NOT NULL AND u.{column_name} > 0
+            ORDER BY u.name
+        """
+        return execute_db(query, fetch=True)
+        
+    elif criteria_key in ["IELTS", "TOEFL", "PTE", "GPA"]:
+        # Keyword search in entry_requirements (case-insensitive LIKE)
+        keyword = criteria_key.lower().replace(' ', '') # normalize keyword
+        
+        query = f"""
+            SELECT 
+                u.id, 
+                u.name, 
+                c.name, 
+                u.state, 
+                u.num_majors, 
+                u.tuition_fee_avg, 
+                u.entry_requirements
+            FROM universities u
+            LEFT JOIN countries c ON u.country_id = c.id
+            WHERE u.entry_requirements IS NOT NULL 
+              AND u.entry_requirements LIKE ?
+            ORDER BY u.name
+        """
+        return execute_db(query, (f"%{keyword}%",), fetch=True)
+    
+    return []
+
+def get_favorite_universities_by_criteria(uid, criteria_key):
+    """
+    Get favorite universities for a user based on criteria.
+    - Same filtering logic as get_universities_by_criteria, but only for favorites.
+    """
+    if criteria_key in ["tuition_fee_avg", "majors_quantity"]:
+        column_name = {
+            "tuition_fee_avg": "tuition_fee_avg",
+            "majors_quantity": "num_majors"
+        }.get(criteria_key)
+        
+        if not column_name:
+            return []
+
+        query = f"""
+            SELECT 
+                u.id, 
+                u.name, 
+                c.name, 
+                u.state, 
+                u.num_majors, 
+                u.tuition_fee_avg, 
+                u.entry_requirements
+            FROM user_favorites uf
+            JOIN universities u ON uf.university_id = u.id
+            LEFT JOIN countries c ON u.country_id = c.id
+            WHERE uf.user_id = ? 
+              AND u.{column_name} IS NOT NULL AND u.{column_name} > 0
+            ORDER BY u.name
+        """
+        return execute_db(query, (uid,), fetch=True)
+        
+    elif criteria_key in ["IELTS", "TOEFL", "PTE", "GPA"]:
+        keyword = criteria_key.lower().replace(' ', '')
+        
+        query = f"""
+            SELECT 
+                u.id, 
+                u.name, 
+                c.name, 
+                u.state, 
+                u.num_majors, 
+                u.tuition_fee_avg, 
+                u.entry_requirements
+            FROM user_favorites uf
+            JOIN universities u ON uf.university_id = u.id
+            LEFT JOIN countries c ON u.country_id = c.id
+            WHERE uf.user_id = ? 
+              AND u.entry_requirements IS NOT NULL 
+              AND u.entry_requirements LIKE ?
+            ORDER BY u.name
+        """
+        return execute_db(query, (uid, f"%{keyword}%"), fetch=True)
+    
+    return []
+
+def get_university_by_id(uni_id):
+    """Get full record of a university by its ID"""
+    query = """
+        SELECT 
+            u.id, 
+            u.name, 
+            c.name, 
+            u.state, 
+            u.domain,
+            u.website,
+            u.num_majors, 
+            u.tuition_fee_avg, 
+            u.entry_requirements
+        FROM universities u
+        LEFT JOIN countries c ON u.country_id = c.id
+        WHERE u.id = ?
+    """
+    result = execute_db(query, (uni_id,), fetch=True)
+    return result[0] if result else None

@@ -41,7 +41,7 @@ class UniversitiesTab:
         style.configure("Treeview", 
                         background="white",
                         foreground="black", 
-                        rowheight=25, 
+                        rowheight=30, # Increased row height for better readability
                         fieldbackground="white",
                         font=self.fonts["normal"])
         
@@ -217,28 +217,45 @@ class UniversitiesTab:
                 command=self.add_to_favorites
             ).pack()
 
-        # --- 3. DATA TABLE (Bottom) ---
+        # --- 3. DATA TABLE (Updated Section) ---
         tree_frame = tk.Frame(self.frame, bg=self.colors["bg_main"])
         tree_frame.pack(pady=10, padx=10, fill="both", expand=True)
         
         columns = ("ID", "Name", "Country", "State", "Domain", "Website", 
                    "Majors", "Tuition", "Requirements")
-        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12)
+        
+        # Add scrollbars first
+        scrollbar_v = ttk.Scrollbar(tree_frame, orient="vertical")
+        scrollbar_h = ttk.Scrollbar(tree_frame, orient="horizontal")
+        
+        # Init Treeview with scroll commands
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12,
+                                 yscrollcommand=scrollbar_v.set, xscrollcommand=scrollbar_h.set)
+        
+        # Link scrollbars to treeview
+        scrollbar_v.config(command=self.tree.yview)
+        scrollbar_h.config(command=self.tree.xview)
         
         # Configure columns
+        # Logic: Set stretch=False and define minwidth to force horizontal scrolling for wide content
         col_configs = {
-            "ID": 40, "Name": 200, "Country": 100, "State": 100,
-            "Domain": 120, "Website": 150, "Majors": 60, "Tuition": 80, "Requirements": 100
+            "ID": {"w": 40, "stretch": False},
+            "Name": {"w": 200, "stretch": False},
+            "Country": {"w": 100, "stretch": False},
+            "State": {"w": 100, "stretch": False},
+            "Domain": {"w": 120, "stretch": False},
+            "Website": {"w": 150, "stretch": False},
+            "Majors": {"w": 60, "stretch": False},
+            "Tuition": {"w": 80, "stretch": False},
+            "Requirements": {"w": 500, "stretch": False} # Set wide width for Requirements
         }
         
-        for col, width in col_configs.items():
-            self.tree.column(col, width=width, anchor="w")
+        for col, config in col_configs.items():
+            self.tree.column(col, width=config["w"], minwidth=config["w"], 
+                             anchor="w", stretch=config["stretch"])
             self.tree.heading(col, text=col, anchor="w")
         
-        scrollbar_v = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
-        scrollbar_h = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscroll=scrollbar_v.set, xscroll=scrollbar_h.set)
-        
+        # Layout Grid
         self.tree.grid(row=0, column=0, sticky="nsew")
         scrollbar_v.grid(row=0, column=1, sticky="ns")
         scrollbar_h.grid(row=1, column=0, sticky="ew")
@@ -248,9 +265,31 @@ class UniversitiesTab:
         
         if self.is_admin:
             self.tree.bind("<<TreeviewSelect>>", self.on_select)
+        
+        # Trigger data load
         self.refresh()
 
-    # --- LOGIC METHODS (UNCHANGED) ---
+    # --- LOGIC METHODS ---
+
+    def format_requirements(self, json_str):
+        """Helper to format JSON requirement string into readable text"""
+        if not json_str:
+            return "N/A"
+        try:
+            data = json.loads(json_str)
+            if isinstance(data, list):
+                # Format: [Category] Key: Value | ...
+                formatted_parts = []
+                for item in data:
+                    cat = item.get('category', '?')
+                    key = item.get('key', '?')
+                    val = item.get('value', '?')
+                    formatted_parts.append(f"[{cat}] {key}: {val}")
+                return " | ".join(formatted_parts)
+            return str(data)
+        except json.JSONDecodeError:
+            return str(json_str)
+
     def add_to_favorites(self):
         selected = self.tree.selection()
         if not selected:
@@ -276,20 +315,25 @@ class UniversitiesTab:
         return [r[0] for r in rows] if rows else []
         
     def refresh(self):
+        # Clear existing
         for row in self.tree.get_children():
             self.tree.delete(row)
+            
         rows = execute_db("""
             SELECT u.id, u.name, c.name, u.state, u.domain, u.website, 
                    u.num_majors, u.tuition_fee_avg, u.entry_requirements
             FROM universities u
             JOIN countries c ON u.country_id = c.id
         """, fetch=True)
+        
         if rows:
             for r in rows:
                 display_vals = list(r[:8])
-                req_text = "N/A" if not r[8] else "JSON data..."
+                # Logic: Format JSON string using helper function
+                req_text = self.format_requirements(r[8])
                 display_vals.append(req_text)
                 self.tree.insert("", "end", values=display_vals)
+                
         if self.is_admin:
             self.uni_country['values'] = self.get_country_names()
         self.search_country['values'] = ["All"] + self.get_country_names()
@@ -319,9 +363,12 @@ class UniversitiesTab:
                         continue
                 
                 display_vals = list(r[:8])
-                req_text = "N/A" if not r[8] else "JSON data..."
+                # Logic: Format JSON string using helper function
+                req_text = self.format_requirements(r[8])
                 display_vals.append(req_text)
                 self.tree.insert("", "end", values=display_vals)
+    
+    # ... (Rest of logic: add_requirement, add_scholarship, add/update/delete university remains unchanged) ...
     
     def add_requirement(self):
         dialog = Toplevel(self.frame)
