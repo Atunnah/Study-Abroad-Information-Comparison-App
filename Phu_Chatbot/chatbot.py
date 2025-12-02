@@ -157,27 +157,6 @@ class ChatbotTab:
             foreground=self.config.STATUS_COLOR,
             font=("Segoe UI", 14)
         )
-        self.output.tag_config(
-            "status", 
-            foreground="#9b59b6",
-            font=("Segoe UI", 10, "italic")
-        )
-        self.output.tag_config(
-            "sql", 
-            foreground="#2980b9",
-            font=("Consolas", 10),
-            background="#ecf0f1"
-        )
-        self.output.tag_config(
-            "explanation", 
-            foreground="#16a085",
-            font=("Segoe UI", 10, "italic")
-        )
-        self.output.tag_config(
-            "success", 
-            foreground="#27ae60",
-            font=("Segoe UI", 10, "bold")
-        )
         
         # Hiển thị welcome message
         self.output.config(state="normal")
