@@ -16,20 +16,53 @@ class TextToSQLEngine:
         self.client = g4f.Client()
         self.schema_info = db_helper.get_schema_info()
     
-    def generate_sql(self, user_question):
+    def generate_sql(self, user_question, chat_history=None, data_context=None):
         """
         Tạo câu SQL từ câu hỏi tự nhiên
         
         Args:
             user_question: Câu hỏi của người dùng
+            chat_history: Lịch sử chat trước đó (mặc định None)
             
         Returns:
             tuple: (success, sql_query/error_message)
         """
-        prompt = f"""Bạn là chuyên gia SQL cho hệ thống quản lý trường đại học. Chuyển câu hỏi thành SQL query.
+        # 1. Xử lý Chat History (Text context)
+        chat_context_str = ""
+        if chat_history:
+            relevant_history = [msg for msg in chat_history if msg['role'] != 'system'][-10:]
+            if relevant_history:
+                chat_context_str = "LỊCH SỬ CHAT:\n" + "\n".join([f"- {m['role']}: {m['content']}" for m in relevant_history])
+
+        # 2. Xử lý Data Context (ID Context) - QUAN TRỌNG NHẤT
+        data_ids_str = ""
+        if data_context and data_context.get('university_ids'):
+            ids = ", ".join(data_context['university_ids'])
+            data_ids_str = f"""
+*** DỮ LIỆU TỪ LẦN TÌM KIẾM TRƯỚC (QUAN TRỌNG) ***
+Danh sách ID các trường vừa tìm thấy: [{ids}]
+"""
+
+        prompt = f"""Bạn là chuyên gia SQL.
 
 {self.schema_info}
 
+{chat_context_str}
+
+{data_ids_str}
+
+## CÂU HỎI HIỆN TẠI:
+"{user_question}"
+
+## QUY TẮC LOGIC QUAN TRỌNG:
+1. **ƯU TIÊN TUYỆT ĐỐI**: Nếu người dùng dùng từ chỉ trỏ như "các trường trên", "những trường này", "trong số đó", "bọn chúng"... -> BẮT BUỘC phải dùng mệnh đề:
+   `WHERE id IN ({", ".join(data_context['university_ids']) if data_context and data_context.get('university_ids') else "..."})`
+   để lọc đúng các trường đã tìm thấy trước đó.
+
+2. Nếu người dùng hỏi tiêu chí cụ thể (ví dụ: "yêu cầu đầu vào", "học phí") cho "các trường trên":
+   -> `SELECT name, entry_requirements, tuition_fee_avg FROM universities WHERE id IN (...)`
+
+3. Nếu câu hỏi là tìm kiếm mới hoàn toàn -> Bỏ qua danh sách ID cũ.
 ## HƯỚNG DẪN TẠO SQL:
 
 ### 1. CÁC TRƯỜNG HỢP THƯỜNG GẶP:
