@@ -13,9 +13,6 @@ class LocalChitchatEngine:
     Sử dụng cố định model Flash để tối ưu tốc độ, bỏ qua bước dò tìm.
     """
     def __init__(self):
-        # ---------------------------------------------------------
-        # [QUAN TRỌNG] Dán API Key của bạn vào đây
-        # ---------------------------------------------------------
         self.api_key = GEMINI_KEY
         
         self.model = None

@@ -14,11 +14,10 @@ class TextToSQLEngine:
         Tạo câu SQL từ câu hỏi tự nhiên, có sử dụng lịch sử chat để hiểu ngữ cảnh.
         """
         
-        # --- 1. XỬ LÝ LỊCH SỬ CHAT ---
-        # Lấy 6 tin nhắn gần nhất (trừ system) để làm ngữ cảnh
+        valid_countries_str = self.db_helper.get_all_country_names()
         history_str = ""
         if chat_history:
-            recent_msgs = chat_history[-6:]
+            recent_msgs = chat_history[-30:]
             for msg in recent_msgs:
                 role = "User" if msg['role'] == 'user' else "AI"
                 content = msg['content']
@@ -31,81 +30,100 @@ class TextToSQLEngine:
 
 Table: countries
 - id (PK)
-- name (TEXT): Tên tiếng Anh (VD: 'United States', 'United Kingdom', 'Vietnam', 'Australia')
-- code (TEXT): Mã quốc gia (VD: 'US', 'UK', 'VN')
+- code (TEXT): Mã quốc gia (VD: 'US', 'VN', 'UK')
+- name (TEXT): Tên tiếng Anh (VD: 'United States', 'Vietnam')
+- flag_url (TEXT)
 
 Table: universities
 - id (PK)
 - name (TEXT): Tên trường
-- country_id (FK): Liên kết countries.id
-- tuition_fee_avg (REAL): Học phí trung bình (USD/năm)
-- entry_requirements (TEXT): Yêu cầu đầu vào (VD: 'IELTS 6.5, GPA 3.0')
+- country_id (FK): Link to countries.id
+- state (TEXT): Bang/Tỉnh
+- domain (TEXT), website (TEXT)
 - num_majors (INTEGER): Số lượng ngành
+- tuition_fee_avg (REAL): Học phí trung bình (USD/năm).
+- entry_requirements (TEXT): Chứa thông tin tổng hợp, được chia làm 3 loại chính:
+    1. **Language:** IELTS, TOEFL, ESL, Conditional, Foundation...
+    2. **Academic:** GPA, SAT, GMAT, GRE, Bachelor degree...
+    3. **Extra:** Essay, Recommendation Letter, Interview...
+    **LƯU Ý VỀ CỘT `entry_requirements`:**
+Đây là cột chứa văn bản hỗn hợp (Unstructured Text), bao gồm 3 nhóm thông tin:
+1. **Language:** IELTS, TOEFL, ESL...
+2. **Academic:** GPA, SAT, Bachelor degree...
+3. **Extra (Rất đa dạng):** Portfolio, Interview, Work Experience, GMAT, GRE, Reference Letter, Essay, Personal Statement...
+
 
 Table: scholarships
 - id (PK)
 - name (TEXT): Tên học bổng
-- university_id (FK): Liên kết universities.id
+- university_id (FK): Link to universities.id
 - value (REAL): Giá trị (USD)
-- criteria (TEXT): Điều kiện
+- duration (TEXT), criteria (TEXT)
 
-Table: user (Thông tin người dùng - Thường không dùng cho tra cứu trường học)
+Table: user_favorites (Bảng phụ - Danh sách yêu thích)
+- user_id, university_id
+
+Table: user (Thông tin user)
 - uid, email, full_name...
 """
 
         # --- 3. QUY TẮC NGHIỆP VỤ ---
         rules = """
-### 2. QUY TẮC QUAN TRỌNG:
-1. **Mapping Quốc Gia:** - "Mỹ" -> LIKE '%United States%'
-   - "Anh" -> LIKE '%United Kingdom%'
-   - "Úc" -> LIKE '%Australia%'
-   - "Hàn" -> LIKE '%Korea%'
-   - "Nhật" -> LIKE '%Japan%'
-   
-2. **Quy tắc JOIN:**
-   - Tìm trường theo quốc gia: `universities` JOIN `countries`
-   - Tìm học bổng theo quốc gia: `scholarships` JOIN `universities` JOIN `countries`
+### 2. QUY TẮC NGHIỆP VỤ (BẮT BUỘC TUÂN THỦ):
 
-3. **Lọc dữ liệu:**
-   - So sánh học phí/học bổng: Dùng <, >, = (VD: tuition_fee_avg < 20000)
-   - Tìm theo yêu cầu (IELTS/GPA): Dùng LIKE (VD: entry_requirements LIKE '%IELTS 6.0%')
+1. **Nhận diện Quốc Gia (Dynamic Mapping):**
+   - Danh sách quốc gia HỢP LỆ trong Database: [{valid_countries_str}].
+   - Nhiệm vụ của bạn: Nếu User hỏi tên quốc gia bằng tiếng Việt (ví dụ: "Pháp", "Đức", "Hàn"), hãy tự dịch sang tiếng Anh và tìm tên **gần giống nhất** trong danh sách trên để đưa vào câu lệnh SQL.
+   - Ví dụ: User nói "Pháp" -> Tìm trong danh sách thấy "France" -> SQL: `c.name LIKE '%France%'`.
    
-4. **Ngữ cảnh:** - Nếu câu hỏi thiếu chủ ngữ (VD: "Còn ở Anh thì sao?"), hãy nhìn vào LỊCH SỬ CHAT để biết người dùng đang tìm Trường hay Học bổng.
+2. **VỚI CỘT `entry_requirements` (Yêu cầu đầu vào/Tiếng Anh):**
+   - **TUYỆT ĐỐI KHÔNG DÙNG TRONG MỆNH ĐỀ `WHERE`**.
+   - **BẮT BUỘC PHẢI `SELECT` CỘT NÀY RA**.
+   - Lý do: Logic so sánh tiếng Anh/GPA rất phức tạp, hãy để AI xử lý sau. SQL chỉ cần lấy dữ liệu thô.
+
+3. **Xử lý "Ranking" / "Trường top":**
+   - Database KHÔNG CÓ cột ranking. 
+   - Nếu user hỏi "top", "hàng đầu" -> Chỉ cần sắp xếp theo học phí cao (`ORDER BY tuition_fee_avg DESC`) hoặc lấy ngẫu nhiên `LIMIT 5`, KHÔNG được bịa cột ranking.
+
+4. **Xử lý "Thạc sĩ" (Master):**
+   - Database KHÔNG phân loại bậc học. Mặc định coi tất cả là trường phù hợp. KHÔNG filter cột `master`.
+
+5. **Ngữ cảnh (Context):**
+   - Nếu câu hỏi thiếu chủ ngữ (VD: "Còn ở Anh thì sao?", "Giá bao nhiêu?"), hãy nhìn vào LỊCH SỬ CHAT để biết người dùng đang tìm Trường hay Học bổng và áp dụng các điều kiện cũ (nếu có).
+   - Luôn kết hợp điều kiện từ LỊCH SỬ CHAT.
+
+6. **Sắp xếp:** Luôn ưu tiên sắp xếp theo học phí (`ORDER BY tuition_fee_avg ASC`) nếu user tìm trường rẻ.
 """
 
         # --- 4. VÍ DỤ MẪU ---
         examples = """
+
 ### 3. VÍ DỤ MẪU:
 
-User: "Tìm các trường ở Mỹ có học phí dưới 25000"
+User: "Tìm trường ở Pháp giá rẻ chưa cần tiếng anh"
+Thinking: 
+- Lọc Quốc gia = France. 
+- Lọc Giá rẻ = ORDER BY tuition_fee_avg ASC.
+- "Chưa cần tiếng anh" -> Bỏ qua điều kiện này trong WHERE, nhưng phải SELECT cột entry_requirements để check sau.
 SQL:
 ```sql
-SELECT u.name, u.tuition_fee_avg, c.name as country_name
+SELECT u.name, u.tuition_fee_avg, u.entry_requirements, c.name as country_name
 FROM universities u
 JOIN countries c ON u.country_id = c.id
-WHERE c.name LIKE '%United States%' AND u.tuition_fee_avg < 25000
-LIMIT 10;
-User: "Có những học bổng nào tại Úc giá trị trên 5000?" SQL:
-SELECT s.name, s.value, u.name as uni_name
-FROM scholarships s
-JOIN universities u ON s.university_id = u.id
-JOIN countries c ON u.country_id = c.id
-WHERE c.name LIKE '%Australia%' AND s.value > 5000
-LIMIT 10;
-User: "Liệt kê các trường yêu cầu IELTS 6.5" SQL:
-SELECT name, entry_requirements
-FROM universities
-WHERE entry_requirements LIKE '%IELTS%' AND entry_requirements LIKE '%6.5%'
-LIMIT 10;
+WHERE c.name LIKE '%France%'
+ORDER BY u.tuition_fee_avg ASC
+LIMIT 15;
 """
         # --- 5. GHÉP PROMPT ---
         full_prompt = f"""Bạn là chuyên gia SQL.
         {schema_context} {rules} {examples}
 LỊCH SỬ CHAT (Context): {history_str}
-CÂU HỎI USER: "{user_question}"
+CÂU HỎI HIỆN TẠI: "{user_question}"
 Yêu cầu:
 
-Dựa vào Lịch sử chat để hiểu rõ câu hỏi nếu nó không đầy đủ.
+Phân tích Lịch sử chat để hiểu ngữ cảnh.
+
+KHÔNG trả lời bằng lời văn.
 
 Chỉ trả về JSON format: {{ "sql": "...", "explanation": "..." }}
 
@@ -115,19 +133,26 @@ JSON OUTPUT:"""
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": full_prompt}],
-                temperature=0.1 # Quan trọng: Nhiệt độ thấp để code chính xác
+                temperature=0.1 # Nhiệt độ thấp để code chính xác
             )
             
             result_text = response.choices[0].message.content.strip()
             
-            # Clean JSON (xóa markdown ```json)
+            # Clean JSON
             result_text = re.sub(r'```json\s*|\s*```', '', result_text).strip()
+            result_text = re.sub(r'```sql\s*|\s*```', '', result_text).strip()
             
-            # Parse
+            # Fallback: Nếu AI trả về text không phải JSON nhưng có chứ SELECT
+            if not result_text.strip().startswith("{") and "SELECT" in result_text.upper():
+                sql_match = re.search(r'SELECT.*', result_text, re.DOTALL | re.IGNORECASE)
+                if sql_match:
+                    return True, {"sql": sql_match.group(0), "explanation": "Generated from raw text"}
+
+            # Parse JSON
             result = json.loads(result_text)
             
             if "sql" not in result:
-                return False, "AI không trả về SQL."
+                return False, "AI không trả về key 'sql' trong JSON."
             
             # Validate an toàn
             sql = result['sql'].strip()
@@ -137,6 +162,7 @@ JSON OUTPUT:"""
             return True, result
 
         except json.JSONDecodeError:
-            return False, "Lỗi đọc JSON từ AI."
+            print(f"[TextToSQL Error] Invalid JSON: {result_text}")
+            return False, "Lỗi đọc dữ liệu JSON từ AI."
         except Exception as e:
             return False, f"Lỗi: {str(e)}"

@@ -155,3 +155,13 @@ class DatabaseHelper:
                 stats[table] = result[0]['count']
        
         return stats
+    
+    def get_all_country_names(self):
+        """Lấy danh sách tên tất cả quốc gia đang có trong DB để đưa vào Prompt"""
+        sql = "SELECT DISTINCT name FROM countries"
+        success, data = self.execute_query(sql)
+        if success and data:
+            # Trả về chuỗi: "United States, Vietnam, France, United Kingdom..."
+            names = [row['name'] for row in data]
+            return ", ".join(names)
+        return "United States, United Kingdom, Vietnam"

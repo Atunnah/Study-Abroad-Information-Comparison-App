@@ -3,3 +3,4 @@ matplotlib
 seaborn
 pandas
 gpt4all
+python-dotenv
