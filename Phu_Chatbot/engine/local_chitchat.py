@@ -1,64 +1,49 @@
 # engine/local_chitchat.py
 import google.generativeai as genai
 import random
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+GEMINI_KEY = os.getenv("GEMINI_KEY")
 
 class LocalChitchatEngine:
     """
     Engine chitchat sử dụng Google Gemini API.
-    Tự động dò tìm model khả dụng để tránh lỗi 404.
+    Sử dụng cố định model Flash để tối ưu tốc độ, bỏ qua bước dò tìm.
     """
     def __init__(self):
         # ---------------------------------------------------------
         # [QUAN TRỌNG] Dán API Key của bạn vào đây
         # ---------------------------------------------------------
-        self.api_key = "AIzaSyCHnYW8eDmqKOQzZC5nyfpm665XkO54e1Y" 
+        self.api_key = GEMINI_KEY
         
         self.model = None
         self.chat_session = None
         
-        # Cấu hình và tự động chọn model
+        # Cấu hình model cố định
+        # Lưu ý: Hiện tại chưa có bản 2.5, bản Flash mới nhất là "gemini-1.5-flash"
+        # Nếu muốn dùng bản 2.0 (thử nghiệm), hãy đổi thành "gemini-2.0-flash-exp"
+        target_model = "gemini-2.5-flash"
+
         try:
             genai.configure(api_key=self.api_key)
             
-            # 1. Lấy danh sách tất cả model mà key này dùng được
-            all_models = list(genai.list_models())
+            print(f"[Gemini] Đang kết nối với model: {target_model}...")
             
-            # 2. Lọc ra các model hỗ trợ chat (generateContent)
-            valid_models = [
-                m.name for m in all_models 
-                if 'generateContent' in m.supported_generation_methods
-            ]
-            
-            print(f"[Gemini] Các model khả dụng: {valid_models}")
-            
-            if not valid_models:
-                print("❌ Không tìm thấy model nào hỗ trợ chat trong API Key này.")
-                return
-
-            # 3. Chiến thuật chọn model: Ưu tiên Flash -> Pro -> Cái đầu tiên tìm thấy
-            # Tìm model có chữ 'flash' (nhanh nhất)
-            chosen_model_name = next((m for m in valid_models if 'flash' in m), None)
-            
-            # Nếu không có flash, tìm 'pro'
-            if not chosen_model_name:
-                chosen_model_name = next((m for m in valid_models if 'pro' in m), None)
-            
-            # Nếu không có cả hai, lấy cái đầu tiên trong danh sách
-            if not chosen_model_name:
-                chosen_model_name = valid_models[0]
-                
-            print(f"✅ Đã tự động chọn model: {chosen_model_name}")
-
-            # 4. Khởi tạo
-            self.model = genai.GenerativeModel(chosen_model_name)
+            # Khởi tạo trực tiếp model, không cần list_models() dò tìm nữa
+            self.model = genai.GenerativeModel(target_model)
             self.chat_session = self.model.start_chat(history=[])
             
             # System prompt
-            self.system_prompt = "Bạn là trợ lý ảo tư vấn du học vui tính. Hãy trả lời xã giao ngắn gọn, tự nhiên bằng tiếng Việt."
+            self.system_prompt = "Bạn là trợ lý ảo tư vấn du học điềm đạm, hiểu biết và lịch sự. Hãy trả lời xã giao ngắn gọn, tự nhiên bằng tiếng Việt."
             self.chat_session.send_message(self.system_prompt)
             
+            print("✅ Kết nối Gemini thành công!")
+
         except Exception as e:
             print(f"❌ Lỗi cấu hình Gemini: {e}")
+            # Nếu lỗi 404 nghĩa là tài khoản chưa hỗ trợ Flash, hãy thử đổi target_model = "gemini-pro"
 
     def generate_response_stream(self, user_text):
         """

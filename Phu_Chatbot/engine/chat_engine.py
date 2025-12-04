@@ -26,7 +26,6 @@ class ChatEngine:
         self.router = IntentRouter()
         
         # Khởi tạo engine chitchat 1 lần duy nhất và lưu vào biến self
-        # Điều này giúp tái sử dụng session Gemini, không bị lag khi chat câu tiếp theo
         print("[System] Đang khởi động Chitchat Engine...")
         try:
             self.local_engine = LocalChitchatEngine()
@@ -90,7 +89,7 @@ class ChatEngine:
             # TRƯỜNG HỢP 2: DOMAIN (Nghiệp vụ - Logic cũ)
             # =================================================================
             
-            # Lưu user message vào history của Online Model
+            # 1. Lưu user message vào history TRƯỚC khi xử lý DB
             self.chat_history.append({"role": "user", "content": user_text})
             
             db_data = None
@@ -101,8 +100,11 @@ class ChatEngine:
                     self._handle_cancel(output_widget, status_callback)
                     return 
 
-                # Text to SQL
-                success, sql_result = self.text_to_sql.generate_sql(user_text)
+                # [THAY ĐỔI QUAN TRỌNG]: Truyền lịch sử chat vào TextToSQL
+                # Lấy tất cả lịch sử TRỪ câu cuối (vì câu cuối là user_text đã được truyền riêng)
+                history_context = self.chat_history[:-1]
+                
+                success, sql_result = self.text_to_sql.generate_sql(user_text, history_context)
                 
                 if stop_event.is_set(): 
                     self._handle_cancel(output_widget, status_callback)
