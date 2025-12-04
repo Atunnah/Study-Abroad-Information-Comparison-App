@@ -7,15 +7,21 @@ from datetime import datetime
 from .config.prompts import SYSTEM_PROMPT
 from .config.ui_config import ChatbotConfig
 from .engine.chat_engine import ChatEngine
+from .engine.database_helper import DatabaseHelper  # Import DatabaseHelper
 
 class ChatbotTab:
     """
-    Tab Chatbot AI với giao diện Đa hội thoại (Sidebar + Chat)
+    Tab Chatbot AI với giao diện Đa hội thoại (Sidebar + Chat) + Lưu Database
     """
     
-    def __init__(self, parent_frame):
+    # [SỬA ĐỔI] Thêm tham số current_user_id
+    def __init__(self, parent_frame, current_user_id):
         self.master_frame = parent_frame
         self.config = ChatbotConfig()
+        
+        # Lưu ID người dùng để biết load lịch sử của ai
+        self.user_id = current_user_id 
+        self.db_helper = DatabaseHelper() # Khởi tạo DB Helper
         
         # Quản lý đa hội thoại
         self.sessions = {}
@@ -27,41 +33,38 @@ class ChatbotTab:
         self.typing_animation_running = False
         self.typing_mark = None
         
-        # State giao diện (Thêm mới)
+        # State giao diện
         self.is_sidebar_visible = True
         
         self.setup_ui()
         
-        # Tạo hội thoại đầu tiên mặc định
-        self.create_new_session()
+        # [SỬA ĐỔI] Thay vì tạo mới, load từ DB trước
+        self.load_sessions_from_db()
         
     def setup_ui(self):
         """Chia layout thành Sidebar (Trái) và Main Chat (Phải)"""
         
-        # 1. Sidebar Frame (Tạo nhưng chưa pack vội, để hàm toggle xử lý)
+        # 1. Sidebar Frame
         self.sidebar_frame = tk.Frame(self.master_frame, bg=self.config.SIDEBAR_BG, width=250)
-        self.sidebar_frame.pack_propagate(False) # Cố định chiều rộng
+        self.sidebar_frame.pack_propagate(False) 
         
-        # Gọi hàm tạo nội dung sidebar
         self._create_sidebar_content()
         
         # 2. Main Chat Area Frame
         self.main_chat_frame = tk.Frame(self.master_frame, bg=self.config.BACKGROUND)
         
-        # Mặc định hiển thị sidebar
         self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y)
         self.main_chat_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         self._create_main_chat_ui()
 
-    # ================= UI SIDEBAR =================
+    # ================= UI SIDEBAR (GIỮ NGUYÊN) =================
     
     def _create_sidebar_content(self):
         # 1. Khu vực Header của Sidebar
         top_frame = tk.Frame(self.sidebar_frame, bg=self.config.SIDEBAR_BG, pady=20, padx=15)
         top_frame.pack(fill=tk.X)
 
-        # Tiêu đề
         title_lbl = tk.Label(
             top_frame, text="LỊCH SỬ CHAT",
             bg=self.config.SIDEBAR_BG, fg=self.config.SIDEBAR_FG,
@@ -69,109 +72,73 @@ class ChatbotTab:
         )
         title_lbl.pack(fill=tk.X, pady=(0, 15)) 
         
-        # Nút "Đoạn chat mới"
         new_chat_btn = tk.Button(
             top_frame, text="+  Đoạn chat mới",
             bg=self.config.BUTTON_BG, fg="white",
             activebackground=self.config.BUTTON_ACTIVE, activeforeground="white",
             relief=tk.FLAT, font=self.config.FONT_BUTTON,
-            cursor="hand2",
-            pady=6,
+            cursor="hand2", pady=6,
             command=self.create_new_session
         )
         new_chat_btn.pack(fill=tk.X)
         
-        # Đường kẻ phân cách
         separator = tk.Frame(self.sidebar_frame, bg=self.config.SEPARATOR_COLOR, height=1)
         separator.pack(fill=tk.X, padx=15, pady=(0, 10))
 
-        # 2. Khu vực Danh sách (Đã xóa Scrollbar hiển thị)
+        # 2. Khu vực Danh sách
         list_container = tk.Frame(self.sidebar_frame, bg=self.config.SIDEBAR_BG)
         list_container.pack(fill=tk.BOTH, expand=True)
 
-        self.session_list_canvas = tk.Canvas(
-            list_container, 
-            bg=self.config.SIDEBAR_BG, 
-            highlightthickness=0,
-            bd=0
-        )
+        self.session_list_canvas = tk.Canvas(list_container, bg=self.config.SIDEBAR_BG, highlightthickness=0, bd=0)
         self.session_list_frame = tk.Frame(self.session_list_canvas, bg=self.config.SIDEBAR_BG)
         
-        # --- QUAN TRỌNG: KHÔNG TẠO SCROLLBAR Ở ĐÂY NỮA ---
-        
-        # Chỉ pack Canvas
         self.session_list_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
         self.canvas_window = self.session_list_canvas.create_window((0, 0), window=self.session_list_frame, anchor="nw", width=220)
         
-        # Cập nhật vùng cuộn
         self.session_list_frame.bind("<Configure>", self._on_frame_configure)
         self.session_list_canvas.bind("<Configure>", self._on_canvas_configure)
         
-        # --- BIND SỰ KIỆN HOVER ĐỂ LĂN CHUỘT ---
-        # Logic: Chỉ khi chuột nằm trong vùng sidebar_frame thì mới cuộn sidebar
-        # Nếu chuột sang bên phải (Main Chat), sẽ cuộn main chat.
         self.sidebar_frame.bind("<Enter>", self._bind_mouse_scroll)
         self.sidebar_frame.bind("<Leave>", self._unbind_mouse_scroll)
         self._bind_to_mousewheel(top_frame)
         self._bind_to_mousewheel(self.sidebar_frame)
 
     def _on_frame_configure(self, event):
-        """Cập nhật vùng cuộn khi nội dung thay đổi"""
         self.session_list_canvas.configure(scrollregion=self.session_list_canvas.bbox("all"))
 
     def _on_canvas_configure(self, event):
-        """Cập nhật chiều rộng của frame con khi canvas thay đổi kích thước"""
         canvas_width = event.width
         self.session_list_canvas.itemconfig(self.canvas_window, width=canvas_width)
 
     def _on_mousewheel(self, event):
-        """Xử lý lăn chuột (Chỉ cuộn khi nội dung tràn)"""
         try:
-            self.session_list_canvas.update_idletasks()  # Đảm bảo thông số bbox chính xác nhất
+            self.session_list_canvas.update_idletasks()
             bbox = self.session_list_canvas.bbox("all")
-            
             if not bbox: return
             
             content_height = bbox[3] - bbox[1]
             visible_height = self.session_list_canvas.winfo_height()
             
-            # Chỉ cuộn nếu nội dung dài hơn khung nhìn
             if content_height > visible_height:
-                # Điều hướng cuộn: delta dương (lăn lên) -> cuộn lên (-1), delta âm -> cuộn xuống (1)
-                # Dùng kỹ thuật này an toàn hơn là chia 120 (tránh trường hợp chuột độ nhạy cao trả về delta nhỏ)
                 if event.delta > 0:
                     self.session_list_canvas.yview_scroll(-1, "units")
                 elif event.delta < 0:
                     self.session_list_canvas.yview_scroll(1, "units")
-                    
         except Exception:
             pass
 
     def _bind_mouse_scroll(self, event):
-        """Khi chuột đi vào Sidebar -> Bật tính năng lăn chuột cho nó"""
-        # bind_all giúp bắt sự kiện lăn chuột bất kể đang hover vào label hay button con
         self.session_list_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
     def _unbind_mouse_scroll(self, event):
-        """Khi chuột rời Sidebar -> Tắt tính năng lăn chuột (để trả lại cho Main Chat)"""
         self.session_list_canvas.unbind_all("<MouseWheel>")
 
     def _bind_to_mousewheel(self, widget):
-        """
-        Hàm đệ quy: Gán sự kiện lăn chuột cho widget này 
-        VÀ tất cả các widget con của nó.
-        """
-        # Gán sự kiện lăn chuột cho widget hiện tại
         widget.bind("<MouseWheel>", self._on_mousewheel)
-        
-        # Lặp qua tất cả các con của nó để gán tiếp
         for child in widget.winfo_children():
             self._bind_to_mousewheel(child)
 
     def _update_sidebar_list(self):
-        """Vẽ lại danh sách và gán sự kiện cuộn cho TẤT CẢ các phần tử"""
-        # 1. Xóa cũ
         for widget in self.session_list_frame.winfo_children():
             widget.destroy()
             
@@ -182,7 +149,6 @@ class ChatbotTab:
             bg_color = self.config.ITEM_ACTIVE_BG if is_active else self.config.SIDEBAR_BG
             fg_color = "white" if is_active else "#bdc3c7"
             
-            # --- TẠO GIAO DIỆN (Giữ nguyên code cũ) ---
             item_frame = tk.Frame(self.session_list_frame, bg=bg_color)
             item_frame.pack(fill=tk.X, pady=1) 
             
@@ -196,12 +162,10 @@ class ChatbotTab:
             if len(title_text) > 18: title_text = title_text[:16] + "..."
             
             title_btn = tk.Button(
-                inner_frame, text=title_text,
-                bg=bg_color, fg=fg_color,
+                inner_frame, text=title_text, bg=bg_color, fg=fg_color,
                 anchor="w", relief=tk.FLAT, bd=0,
                 font=("Segoe UI", 10, "bold" if is_active else "normal"),
-                cursor="hand2",
-                activebackground=bg_color, activeforeground=fg_color,
+                cursor="hand2", activebackground=bg_color, activeforeground=fg_color,
                 command=lambda i=s_id: self.switch_session(i)
             )
             title_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
@@ -209,69 +173,52 @@ class ChatbotTab:
             del_btn = tk.Label(inner_frame, text="×", bg=bg_color, fg="#636e72", font=("Arial", 14), cursor="hand2")
             del_btn.pack(side=tk.RIGHT)
             
-            # Bind logic click/hover (Giữ nguyên)
             del_btn.bind("<Enter>", lambda e, btn=del_btn: btn.config(fg="#ff7675"))
             del_btn.bind("<Leave>", lambda e, btn=del_btn: btn.config(fg="#636e72"))
             del_btn.bind("<Button-1>", lambda e, i=s_id: self.delete_session(i))
             inner_frame.bind("<Button-1>", lambda e, i=s_id: self.switch_session(i))
             icon_lbl.bind("<Button-1>", lambda e, i=s_id: self.switch_session(i))
 
-        # 2. CẬP NHẬT KÍCH THƯỚC (Quan trọng)
         self.session_list_frame.update_idletasks()
         self.session_list_canvas.configure(scrollregion=self.session_list_canvas.bbox("all"))
-
-        # 3. [MỚI] GÁN SỰ KIỆN LĂN CHUỘT CHO TOÀN BỘ DANH SÁCH
-        # Gọi hàm đệ quy để đảm bảo kể cả khi chuột để lên chữ hay nút bấm thì vẫn lăn được
         self._bind_to_mousewheel(self.session_list_frame)
-        
-        # Gán thêm cho vùng khoảng trống bên dưới (nếu có)
         self.session_list_canvas.bind("<MouseWheel>", self._on_mousewheel)
 
 
-    # ================= UI MAIN CHAT =================
+    # ================= UI MAIN CHAT (GIỮ NGUYÊN) =================
     
     def _create_main_chat_ui(self):
-        # Header
         self.header_frame = tk.Frame(self.main_chat_frame, bg=self.config.HEADER_BG, height=50)
         self.header_frame.pack(fill=tk.X)
-        self.header_frame.pack_propagate(False) # Cố định chiều cao header
+        self.header_frame.pack_propagate(False)
         
-        # --- NÚT TOGGLE SIDEBAR (MỚI) ---
         self.toggle_btn = tk.Button(
-            self.header_frame, text="≡", 
-            bg=self.config.BUTTON_TOGGLE_BG, fg=self.config.BUTTON_TOGGLE_FG,
-            font=self.config.FONT_ICON, relief=tk.FLAT,
-            activebackground=self.config.BUTTON_TOGGLE_HOVER,
-            cursor="hand2",
-            command=self.toggle_sidebar
+            self.header_frame, text="≡", bg=self.config.BUTTON_TOGGLE_BG, fg=self.config.BUTTON_TOGGLE_FG,
+            font=self.config.FONT_ICON, relief=tk.FLAT, activebackground=self.config.BUTTON_TOGGLE_HOVER,
+            cursor="hand2", command=self.toggle_sidebar
         )
         self.toggle_btn.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         
         self.header_title = tk.Label(
-            self.header_frame, text="Hội thoại mới",
-            bg=self.config.HEADER_BG, fg=self.config.HEADER_FG,
+            self.header_frame, text="Hội thoại mới", bg=self.config.HEADER_BG, fg=self.config.HEADER_FG,
             font=self.config.FONT_HEADER_TITLE
         )
         self.header_title.pack(side=tk.LEFT, padx=5, pady=10)
         
-        # Chat Area
         chat_frame = tk.Frame(self.main_chat_frame, bg=self.config.CHAT_BG)
         chat_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(10, 10))
         
         self.output = scrolledtext.ScrolledText(
-            chat_frame, wrap=tk.WORD, state="disabled",
-            font=self.config.FONT_TEXT, bg=self.config.CHAT_BG,
+            chat_frame, wrap=tk.WORD, state="disabled", font=self.config.FONT_TEXT, bg=self.config.CHAT_BG,
             padx=15, pady=15, relief=tk.FLAT
         )
         self.output.pack(fill=tk.BOTH, expand=True)
         
-        # Config Tags
         self.output.tag_config("user_msg", justify='right', lmargin1=100, lmargin2=100, rmargin=10, foreground=self.config.USER_BG)
         self.output.tag_config("assistant_msg", justify='left', lmargin1=10, lmargin2=10, rmargin=100, foreground=self.config.TEXT_PRIMARY)
         self.output.tag_config("typing", justify='left', lmargin1=10, foreground=self.config.STATUS_COLOR, font=("Segoe UI", 14, "bold"))
         self.output.tag_config("error", justify='center', foreground=self.config.ERROR_COLOR)
         
-        # Input Area
         input_frame = tk.Frame(self.main_chat_frame, bg=self.config.BACKGROUND)
         input_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
         
@@ -292,64 +239,90 @@ class ChatbotTab:
         self.status_label = tk.Label(self.main_chat_frame, text="", font=self.config.FONT_STATUS, bg=self.config.BACKGROUND, fg=self.config.STATUS_COLOR)
         self.status_label.pack(pady=(0, 5))
 
-    # ================= LOGIC TOGGLE SIDEBAR (MỚI) =================
-    
     def toggle_sidebar(self):
-        """Ẩn hoặc hiện sidebar"""
         if self.is_sidebar_visible:
-            # Đang hiện -> Ẩn đi
             self.sidebar_frame.pack_forget()
             self.is_sidebar_visible = False
         else:
-            # Đang ẩn -> Hiện lại
-            # Quan trọng: pack sidebar BEFORE main_chat_frame để nó nằm bên trái
             self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, before=self.main_chat_frame)
             self.is_sidebar_visible = True
 
-    # ================= LOGIC QUẢN LÝ SESSION =================
+    # ================= LOGIC DATABASE & SESSION (MỚI) =================
+
+    def load_sessions_from_db(self):
+        """[MỚI] Tải lịch sử chat từ Database của user hiện tại"""
+        saved_sessions = self.db_helper.get_user_sessions(self.user_id)
+        
+        if saved_sessions:
+            for s in saved_sessions:
+                s_id = s['session_id']
+                title = s['title']
+                created_at = s['created_at'] 
+                
+                # Tạo engine
+                engine = ChatEngine(SYSTEM_PROMPT, db_path="universities_db.db")
+                
+                # Load lịch sử tin nhắn từ bảng chat_messages
+                messages = self.db_helper.get_session_history(s_id)
+                # Ghép System prompt vào đầu
+                full_history = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+                engine.chat_history = full_history
+                
+                self.sessions[s_id] = {
+                    'engine': engine,
+                    'title': title,
+                    'created_at': created_at
+                }
+            
+            # Switch sang session mới nhất
+            if saved_sessions:
+                first_id = saved_sessions[0]['session_id']
+                self.switch_session(first_id)
+        else:
+            self.create_new_session()
 
     def create_new_session(self):
-        """Tạo hội thoại mới và switch qua nó"""
-        if self.is_processing:
-            return # Không cho tạo khi đang chat
+        """Tạo hội thoại mới và lưu vào DB"""
+        if self.is_processing: return
             
         session_id = str(uuid.uuid4())
         session_count = len(self.sessions) + 1
+        title = f"Hội thoại {session_count}"
         
         new_session = {
             'engine': ChatEngine(SYSTEM_PROMPT, db_path="universities_db.db"),
-            'title': f"Hội thoại {session_count}",
-            'created_at': datetime.now()
+            'title': title,
+            'created_at': datetime.now().isoformat()
         }
         
         self.sessions[session_id] = new_session
+        
+        # [MỚI] Lưu session vào DB
+        self.db_helper.save_session(session_id, self.user_id, title)
+        
         self.switch_session(session_id)
 
     def switch_session(self, session_id):
-        """Chuyển đổi màn hình sang hội thoại session_id"""
         if self.is_processing:
-            # Nếu đang chat ở tab cũ, hủy nó đi
             self.cancel_request()
             
         self.current_session_id = session_id
         
-        # Cập nhật UI
         self._update_sidebar_list()
         current_data = self.sessions[session_id]
         self.header_title.config(text=current_data['title'])
-        
-        # Render lại lịch sử
         self._render_current_history()
 
     def delete_session(self, session_id):
-        """Xóa một hội thoại"""
+        """Xóa hội thoại khỏi RAM và DB"""
         if session_id in self.sessions:
             del self.sessions[session_id]
             
-            # Nếu xóa đúng session đang mở -> tạo mới hoặc mở cái khác
+            # [MỚI] Xóa khỏi DB
+            self.db_helper.delete_session(session_id)
+            
             if self.current_session_id == session_id:
                 if self.sessions:
-                    # Mở cái đầu tiên còn lại
                     first_id = list(self.sessions.keys())[0]
                     self.switch_session(first_id)
                 else:
@@ -358,25 +331,22 @@ class ChatbotTab:
                 self._update_sidebar_list()
 
     def _render_current_history(self):
-        """Vẽ lại toàn bộ tin nhắn từ ChatEngine của session hiện tại"""
         engine = self.sessions[self.current_session_id]['engine']
         history = engine.chat_history
         
         self.output.config(state="normal")
         self.output.delete(1.0, tk.END)
         
-        # Render Welcome message nếu history chỉ có system prompt
         if len(history) <= 1:
             self.append_message("assistant", self.config.WELCOME_MSG)
         else:
-            # Skip system prompt (index 0)
             for msg in history[1:]:
                 self.append_message(msg['role'], msg['content'])
                 
         self.output.config(state="disabled")
         self.output.see(tk.END)
 
-    # ================= LOGIC CHAT (Giữ nguyên) =================
+    # ================= LOGIC CHAT (CẬP NHẬT GỬI DB) =================
 
     def append_message(self, role, text):
         self.output.config(state="normal")
@@ -404,18 +374,24 @@ class ChatbotTab:
         user_text = self.entry.get().strip()
         if not user_text: return
 
-        # 1. Hiển thị User Msg
+        # 1. UI & DB (Lưu tin nhắn User)
         self.append_message("user", user_text)
         self.entry.delete(0, tk.END)
         
-        # 2. Cập nhật Tiêu đề nếu đây là tin nhắn đầu tiên của user
+        # [MỚI] Lưu tin nhắn user vào DB
+        self.db_helper.save_message(self.current_session_id, "user", user_text)
+        
+        # 2. Update Title (nếu cần)
         current_sess = self.sessions[self.current_session_id]
         engine = current_sess['engine']
-        if len(engine.chat_history) == 1: # Chỉ có system prompt
-            # Lấy 20 ký tự đầu làm title
+        
+        if len(engine.chat_history) == 1: 
             new_title = (user_text[:25] + '..') if len(user_text) > 25 else user_text
             current_sess['title'] = new_title
             self.header_title.config(text=new_title)
+            
+            # [MỚI] Cập nhật title trong DB
+            self.db_helper.save_session(self.current_session_id, self.user_id, new_title)
             self._update_sidebar_list()
 
         # 3. Trạng thái xử lý
@@ -425,12 +401,30 @@ class ChatbotTab:
         self.status_label.config(text="⏳ Đang suy nghĩ...")
         self.start_typing_animation()
 
-        # 4. Gửi request vào engine của session hiện tại
+        # 4. Gửi request (Dùng Wrapper để lưu tin nhắn AI sau khi xong)
         threading.Thread(
-            target=engine.ask_stream, # Dùng engine của session hiện tại
-            args=(user_text, self.output, self.on_response_start, self.update_status, self.stop_event),
+            target=self._ask_stream_wrapper, 
+            args=(engine, user_text),
             daemon=True
         ).start()
+
+    def _ask_stream_wrapper(self, engine, user_text):
+        """Wrapper để gọi engine và lưu kết quả vào DB sau khi xong"""
+        # Gọi hàm stream gốc
+        engine.ask_stream(
+            user_text, 
+            self.output, 
+            self.on_response_start, 
+            self.update_status, 
+            self.stop_event
+        )
+        
+        # [MỚI] Sau khi stream xong (hoặc bị cancel), lưu tin nhắn cuối cùng của AI vào DB
+        # Kiểm tra nếu message cuối cùng là assistant thì mới lưu
+        if len(engine.chat_history) > 0:
+            last_msg = engine.chat_history[-1]
+            if last_msg['role'] == 'assistant':
+                self.db_helper.save_message(self.current_session_id, "assistant", last_msg['content'])
 
     # --- Animation & Callbacks ---
     
@@ -458,7 +452,6 @@ class ChatbotTab:
         self.typing_animation_running = False
         if self.typing_mark:
             self.output.config(state="normal")
-            # Xóa dòng đang gõ
             self.output.delete(self.typing_mark, tk.END)
             self.output.config(state="disabled")
             self.typing_mark = None

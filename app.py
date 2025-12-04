@@ -402,7 +402,7 @@ class UniversityApp:
         self.clear_main_container()
         frame = tk.Frame(self.main_container, bg=self.colors['bg'])
         frame.pack(fill="both", expand=True)
-        ChatbotTab(frame)
+        ChatbotTab(frame, current_user_id=self.current_user[0])
         
     def show_user_management(self):
         """Show user management (admin only)"""
