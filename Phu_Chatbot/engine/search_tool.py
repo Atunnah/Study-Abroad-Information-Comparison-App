@@ -12,7 +12,7 @@ class OnlineSearchEngine:
         self.client = TavilyClient(api_key=self.api_key) if self.api_key else None
         self.local_engine = local_engine # Dùng Gemini để tóm tắt
 
-    def search_and_answer(self, user_query, context_info=""):
+    def search_and_answer(self, user_query, context_info="", target_url=None):
         """
         1. Search Tavily
         2. Đưa kết quả search cho Gemini tóm tắt
@@ -22,28 +22,35 @@ class OnlineSearchEngine:
             return
 
         try:
-            # 1. Search Online
-            print(f"[Tavily] Searching: {user_query}")
-            search_result = self.client.search(
-                query=user_query,
-                search_depth="advanced",
-                max_results=5,
-                include_answer=True
-            )
+            print(f"[Tavily] Searching: {user_query} | Site: {target_url}")
+            
+            search_params = {
+                "query": user_query,
+                "search_depth": "advanced",
+                "max_results": 5,
+                "include_answer": True
+            }
+            if target_url:
+                search_params["query"] = f"{user_query} site:{target_url}"
+            
+            search_result = self.client.search(**search_params)
             
             context_text = search_result.get("answer", "")
             results = search_result.get("results", [])
             
             web_content = "\n".join([f"- [{r['title']}]({r['url']}): {r['content'][:300]}..." for r in results])
-
+            
+            if not results:
+                web_content = "Không tìm thấy thông tin phù hợp trên web."
+            
             # 2. Prompt cho Gemini tóm tắt
             prompt = f"""
-NHIỆM VỤ: Bạn là chuyên gia tư vấn du học. Dữ liệu trong Database nội bộ bị thiếu, nên đây là thông tin TÌM KIẾM ONLINE MỚI NHẤT.
+NHIỆM VỤ: Bạn là chuyên gia tư vấn du học. Dữ liệu nội bộ thiếu, đây là thông tin TÌM KIẾM ONLINE từ website: {target_url if target_url else 'Google'}.
 
-CÂU HỎI CỦA USER: "{user_query}"
-BỐI CẢNH (Trường đang tìm): {context_info}
+CÂU HỎI USER: "{user_query}"
+BỐI CẢNH: {context_info}
 
-THÔNG TIN TỪ WEB (TAVILY):
+KẾT QUẢ TÌM KIẾM:
 {web_content}
 
 YÊU CẦU:

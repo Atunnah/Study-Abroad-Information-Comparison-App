@@ -60,13 +60,10 @@ class ChatEngine:
             # TRƯỜNG HỢP 2: DOMAIN (BROAD SEARCH + LLM FILTER)
             # =================================================================
             
-            # 1. Lưu user message vào history
             self.chat_history.append({"role": "user", "content": user_text})
             
             db_data = None
             
-            # --- 2.1: SUY NGHĨ & TRUY VẤN DB (BROAD SEARCH) ---
-            # Truyền lịch sử chat vào để lấy context
             history_context = self.chat_history[:-1]
             success, sql_result = self.text_to_sql.generate_sql(user_text, history_context)
             
@@ -87,25 +84,32 @@ class ChatEngine:
                 self._handle_cancel(output_widget, status_callback)
                 return
 
-            # --- 2.2: CHUẨN BỊ PROMPT LỌC TINH (LLM FILTERING) ---
             is_data_poor = False
             missing_info_msg = ""
             target_website = None
             
-            if db_data:
+            if db_data and len(db_data) > 0:
                 top_records = db_data[:5]
                 null_count = 0
+                
+                first_row = top_records[0]
+                is_scholarship_query = 'criteria' in first_row or 'value' in first_row
+                
                 for r in top_records:
-                    if not r.get('entry_requirements') or not r.get('tuition_fee_avg'):
-                        null_count += 1
-                        if not target_website and r.get('website'):
-                            target_website = r.get('website')
+                    if not target_website:
+                        target_website = r.get('website') or r.get('url') or r.get('link')
+
+                    if is_scholarship_query:
+                        if not r.get('criteria') and not r.get('value'):
+                            null_count += 1
+                    else:
+                        if not r.get('entry_requirements') or not r.get('tuition_fee_avg'):
+                            null_count += 1
                 
                 if null_count >= len(top_records) / 2:
                     is_data_poor = True
-                    missing_info_msg = "\n\n⚠️ **Lưu ý:** Dữ liệu trong database nội bộ về các trường này đang bị thiếu (Null) các thông tin chi tiết (Học phí, Yêu cầu)."
             else:
-                # Không tìm thấy trường nào
+                # Không có bản ghi nào
                 is_data_poor = True
                 missing_info_msg = "\n\n⚠️ Không tìm thấy dữ liệu trong Database."
 
@@ -201,12 +205,13 @@ NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trườn
         search_query = user_text
         
         if specific_website:
-            search_query = f"Tuition fees, admission requirements, master programs site:{specific_website}"
+            search_query = "Tuition fees, admission requirements, master programs"
             
             output_widget.config(state="normal")
             output_widget.insert(tk.END, f"\n🎯 Đang quét trực tiếp website trường: {specific_website}...\n", "status_msg")
             output_widget.config(state="disabled")
         else:
+            search_query = user_text
             output_widget.config(state="normal")
             output_widget.insert(tk.END, "\n🔍 Đang tìm kiếm trên Google/Tavily...\n", "status_msg")
             output_widget.config(state="disabled")
@@ -214,13 +219,15 @@ NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trườn
         output_widget.see("end")
 
         try:
-            for chunk in self.search_engine.search_and_answer(search_query, context_info=f"Website chính thức: {specific_website}"):
-                if stop_event.is_set(): 
-                    break
-                yield chunk 
-                
+            for chunk in self.search_engine.search_and_answer(
+                user_query=search_query, 
+                context_info=f"Website: {specific_website}",
+                target_url=specific_website  
+            ):
+                if stop_event.is_set(): break
+                yield chunk
         except Exception as e:
-            yield f"\n❌ Lỗi tìm kiếm: {e}"
+            yield f"\n❌ Lỗi: {e}"
 
     def _finalize_ui(self, output_widget, status_callback):
         output_widget.config(state="normal")

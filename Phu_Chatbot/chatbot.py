@@ -20,7 +20,7 @@ class ChatbotTab:
         self.config = ChatbotConfig()
         
         self.user_id = current_user_id 
-        self.db_helper = DatabaseHelper() # Khởi tạo DB Helper
+        self.db_helper = DatabaseHelper() 
         print("[System] Đang khởi động Global Gemini Engine...")
         try:
             self.global_chitchat_engine = LocalChitchatEngine()
@@ -49,7 +49,7 @@ class ChatbotTab:
         self.main_chat_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         self._create_main_chat_ui()
 
-    # ================= UI SIDEBAR (GIỮ NGUYÊN) =================
+    # ================= UI SIDEBAR =================
     
     def _create_sidebar_content(self):
         top_frame = tk.Frame(self.sidebar_frame, bg=self.config.SIDEBAR_BG, pady=20, padx=15)
