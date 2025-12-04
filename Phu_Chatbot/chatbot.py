@@ -57,75 +57,176 @@ class ChatbotTab:
     # ================= UI SIDEBAR =================
     
     def _create_sidebar_content(self):
-        # Header Sidebar
+        # 1. Khu vực Header của Sidebar
+        top_frame = tk.Frame(self.sidebar_frame, bg=self.config.SIDEBAR_BG, pady=20, padx=15)
+        top_frame.pack(fill=tk.X)
+
+        # Tiêu đề
         title_lbl = tk.Label(
-            self.sidebar_frame, text="LỊCH SỬ CHAT",
+            top_frame, text="LỊCH SỬ CHAT",
             bg=self.config.SIDEBAR_BG, fg=self.config.SIDEBAR_FG,
-            font=("Segoe UI", 12, "bold"), pady=15
+            font=("Segoe UI", 11, "bold"), anchor="w"
         )
-        title_lbl.pack(fill=tk.X)
+        title_lbl.pack(fill=tk.X, pady=(0, 15)) 
         
         # Nút "Đoạn chat mới"
         new_chat_btn = tk.Button(
-            self.sidebar_frame, text="+ Đoạn chat mới",
+            top_frame, text="+  Đoạn chat mới",
             bg=self.config.BUTTON_BG, fg="white",
+            activebackground=self.config.BUTTON_ACTIVE, activeforeground="white",
             relief=tk.FLAT, font=self.config.FONT_BUTTON,
-            pady=8, cursor="hand2",
+            cursor="hand2",
+            pady=6,
             command=self.create_new_session
         )
-        new_chat_btn.pack(fill=tk.X, padx=10, pady=(0, 15))
+        new_chat_btn.pack(fill=tk.X)
         
-        # Container chứa danh sách các nút hội thoại (có scroll)
-        self.session_list_canvas = tk.Canvas(self.sidebar_frame, bg=self.config.SIDEBAR_BG, highlightthickness=0)
+        # Đường kẻ phân cách
+        separator = tk.Frame(self.sidebar_frame, bg=self.config.SEPARATOR_COLOR, height=1)
+        separator.pack(fill=tk.X, padx=15, pady=(0, 10))
+
+        # 2. Khu vực Danh sách (Đã xóa Scrollbar hiển thị)
+        list_container = tk.Frame(self.sidebar_frame, bg=self.config.SIDEBAR_BG)
+        list_container.pack(fill=tk.BOTH, expand=True)
+
+        self.session_list_canvas = tk.Canvas(
+            list_container, 
+            bg=self.config.SIDEBAR_BG, 
+            highlightthickness=0,
+            bd=0
+        )
         self.session_list_frame = tk.Frame(self.session_list_canvas, bg=self.config.SIDEBAR_BG)
         
-        self.scrollbar = tk.Scrollbar(self.sidebar_frame, orient="vertical", command=self.session_list_canvas.yview)
-        self.session_list_canvas.configure(yscrollcommand=self.scrollbar.set)
+        # --- QUAN TRỌNG: KHÔNG TẠO SCROLLBAR Ở ĐÂY NỮA ---
         
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Chỉ pack Canvas
         self.session_list_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # Tạo window trong canvas
-        self.session_list_canvas.create_window((0, 0), window=self.session_list_frame, anchor="nw", width=230)
+        self.canvas_window = self.session_list_canvas.create_window((0, 0), window=self.session_list_frame, anchor="nw", width=220)
         
-        self.session_list_frame.bind("<Configure>", lambda e: self.session_list_canvas.configure(scrollregion=self.session_list_canvas.bbox("all")))
+        # Cập nhật vùng cuộn
+        self.session_list_frame.bind("<Configure>", self._on_frame_configure)
+        self.session_list_canvas.bind("<Configure>", self._on_canvas_configure)
+        
+        # --- BIND SỰ KIỆN HOVER ĐỂ LĂN CHUỘT ---
+        # Logic: Chỉ khi chuột nằm trong vùng sidebar_frame thì mới cuộn sidebar
+        # Nếu chuột sang bên phải (Main Chat), sẽ cuộn main chat.
+        self.sidebar_frame.bind("<Enter>", self._bind_mouse_scroll)
+        self.sidebar_frame.bind("<Leave>", self._unbind_mouse_scroll)
+        self._bind_to_mousewheel(top_frame)
+        self._bind_to_mousewheel(self.sidebar_frame)
+
+    def _on_frame_configure(self, event):
+        """Cập nhật vùng cuộn khi nội dung thay đổi"""
+        self.session_list_canvas.configure(scrollregion=self.session_list_canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event):
+        """Cập nhật chiều rộng của frame con khi canvas thay đổi kích thước"""
+        canvas_width = event.width
+        self.session_list_canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+    def _on_mousewheel(self, event):
+        """Xử lý lăn chuột (Chỉ cuộn khi nội dung tràn)"""
+        try:
+            self.session_list_canvas.update_idletasks()  # Đảm bảo thông số bbox chính xác nhất
+            bbox = self.session_list_canvas.bbox("all")
+            
+            if not bbox: return
+            
+            content_height = bbox[3] - bbox[1]
+            visible_height = self.session_list_canvas.winfo_height()
+            
+            # Chỉ cuộn nếu nội dung dài hơn khung nhìn
+            if content_height > visible_height:
+                # Điều hướng cuộn: delta dương (lăn lên) -> cuộn lên (-1), delta âm -> cuộn xuống (1)
+                # Dùng kỹ thuật này an toàn hơn là chia 120 (tránh trường hợp chuột độ nhạy cao trả về delta nhỏ)
+                if event.delta > 0:
+                    self.session_list_canvas.yview_scroll(-1, "units")
+                elif event.delta < 0:
+                    self.session_list_canvas.yview_scroll(1, "units")
+                    
+        except Exception:
+            pass
+
+    def _bind_mouse_scroll(self, event):
+        """Khi chuột đi vào Sidebar -> Bật tính năng lăn chuột cho nó"""
+        # bind_all giúp bắt sự kiện lăn chuột bất kể đang hover vào label hay button con
+        self.session_list_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbind_mouse_scroll(self, event):
+        """Khi chuột rời Sidebar -> Tắt tính năng lăn chuột (để trả lại cho Main Chat)"""
+        self.session_list_canvas.unbind_all("<MouseWheel>")
+
+    def _bind_to_mousewheel(self, widget):
+        """
+        Hàm đệ quy: Gán sự kiện lăn chuột cho widget này 
+        VÀ tất cả các widget con của nó.
+        """
+        # Gán sự kiện lăn chuột cho widget hiện tại
+        widget.bind("<MouseWheel>", self._on_mousewheel)
+        
+        # Lặp qua tất cả các con của nó để gán tiếp
+        for child in widget.winfo_children():
+            self._bind_to_mousewheel(child)
 
     def _update_sidebar_list(self):
-        """Vẽ lại danh sách các nút trong sidebar"""
-        # Xóa các nút cũ
+        """Vẽ lại danh sách và gán sự kiện cuộn cho TẤT CẢ các phần tử"""
+        # 1. Xóa cũ
         for widget in self.session_list_frame.winfo_children():
             widget.destroy()
             
-        # Sắp xếp sessions theo thời gian mới nhất -> cũ nhất
         sorted_sessions = sorted(self.sessions.items(), key=lambda x: x[1]['created_at'], reverse=True)
         
         for s_id, data in sorted_sessions:
             is_active = (s_id == self.current_session_id)
             bg_color = self.config.ITEM_ACTIVE_BG if is_active else self.config.SIDEBAR_BG
             fg_color = "white" if is_active else "#bdc3c7"
-            font_style = ("Segoe UI", 10, "bold") if is_active else ("Segoe UI", 10)
             
-            # Container cho 1 item (để căn lề đẹp hơn)
-            item_frame = tk.Frame(self.session_list_frame, bg=bg_color, pady=2, padx=5)
-            item_frame.pack(fill=tk.X, pady=1)
+            # --- TẠO GIAO DIỆN (Giữ nguyên code cũ) ---
+            item_frame = tk.Frame(self.session_list_frame, bg=bg_color)
+            item_frame.pack(fill=tk.X, pady=1) 
             
-            # Nút chọn session
-            btn = tk.Button(
-                item_frame, text=f"💬 {data['title']}",
+            inner_frame = tk.Frame(item_frame, bg=bg_color, padx=15, pady=10)
+            inner_frame.pack(fill=tk.X)
+            
+            icon_lbl = tk.Label(inner_frame, text="💬", bg=bg_color, fg=fg_color, font=("Segoe UI", 10))
+            icon_lbl.pack(side=tk.LEFT)
+            
+            title_text = data['title']
+            if len(title_text) > 18: title_text = title_text[:16] + "..."
+            
+            title_btn = tk.Button(
+                inner_frame, text=title_text,
                 bg=bg_color, fg=fg_color,
-                anchor="w", relief=tk.FLAT,
-                font=font_style, cursor="hand2",
+                anchor="w", relief=tk.FLAT, bd=0,
+                font=("Segoe UI", 10, "bold" if is_active else "normal"),
+                cursor="hand2",
+                activebackground=bg_color, activeforeground=fg_color,
                 command=lambda i=s_id: self.switch_session(i)
             )
-            btn.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            title_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
             
-            # Nút xóa (nhỏ)
-            del_btn = tk.Label(
-                item_frame, text="✕", bg=bg_color, fg="#e74c3c",
-                cursor="hand2", font=("Arial", 10, "bold")
-            )
-            del_btn.pack(side=tk.RIGHT, padx=5)
+            del_btn = tk.Label(inner_frame, text="×", bg=bg_color, fg="#636e72", font=("Arial", 14), cursor="hand2")
+            del_btn.pack(side=tk.RIGHT)
+            
+            # Bind logic click/hover (Giữ nguyên)
+            del_btn.bind("<Enter>", lambda e, btn=del_btn: btn.config(fg="#ff7675"))
+            del_btn.bind("<Leave>", lambda e, btn=del_btn: btn.config(fg="#636e72"))
             del_btn.bind("<Button-1>", lambda e, i=s_id: self.delete_session(i))
+            inner_frame.bind("<Button-1>", lambda e, i=s_id: self.switch_session(i))
+            icon_lbl.bind("<Button-1>", lambda e, i=s_id: self.switch_session(i))
+
+        # 2. CẬP NHẬT KÍCH THƯỚC (Quan trọng)
+        self.session_list_frame.update_idletasks()
+        self.session_list_canvas.configure(scrollregion=self.session_list_canvas.bbox("all"))
+
+        # 3. [MỚI] GÁN SỰ KIỆN LĂN CHUỘT CHO TOÀN BỘ DANH SÁCH
+        # Gọi hàm đệ quy để đảm bảo kể cả khi chuột để lên chữ hay nút bấm thì vẫn lăn được
+        self._bind_to_mousewheel(self.session_list_frame)
+        
+        # Gán thêm cho vùng khoảng trống bên dưới (nếu có)
+        self.session_list_canvas.bind("<MouseWheel>", self._on_mousewheel)
+
 
     # ================= UI MAIN CHAT =================
     
