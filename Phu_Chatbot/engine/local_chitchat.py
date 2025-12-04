@@ -17,10 +17,6 @@ class LocalChitchatEngine:
         
         self.model = None
         self.chat_session = None
-        
-        # Cấu hình model cố định
-        # Lưu ý: Hiện tại chưa có bản 2.5, bản Flash mới nhất là "gemini-1.5-flash"
-        # Nếu muốn dùng bản 2.0 (thử nghiệm), hãy đổi thành "gemini-2.0-flash-exp"
         target_model = "gemini-2.5-flash"
 
         try:
@@ -61,7 +57,33 @@ class LocalChitchatEngine:
         except Exception as e:
             print(f"❌ [Lỗi Gemini API]: {e}")
             yield self._get_fallback_response()
+            
+    def generate_content(self, prompt):
+        """Hàm gọi Gemini để xử lý logic (trả về text ngay, không stream)"""
+        if not self.model:
+            return None
+        
+        try:
+            # Dùng generate_content thay vì chat_session để không bị ảnh hưởng bởi lịch sử chat xã giao
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            print(f"❌ Gemini Error: {e}")
+            return None
 
+    def generate_filter_stream(self, prompt):
+        if not self.model:
+            yield "Lỗi kết nối AI."
+            return
+
+        try:
+            response = self.model.generate_content(prompt, stream=True)
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+        except Exception as e:
+             yield f"Lỗi: {e}"
+             
     def _get_fallback_response(self):
         """Trả lời cứng khi lỗi"""
         responses = [

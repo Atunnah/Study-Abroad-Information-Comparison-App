@@ -10,10 +10,8 @@ class ChatbotConfig:
     HEADER_FG = "#2c3e50"
     CHAT_BG = "white"
 
-    # --- TEXT COLORS (PHẦN BỊ THIẾU GÂY LỖI) ---
-    TEXT_PRIMARY = "#2f3542"        # Màu chữ chính (đen xám)
-    TEXT_SECONDARY = "#57606f"      # Màu chữ phụ (xám nhạt hơn)
-
+    TEXT_PRIMARY = "#2f3542"       
+    TEXT_SECONDARY = "#57606f"      
     # --- Sidebar Items ---
     ITEM_BG = "#1e272e"             
     ITEM_ACTIVE_BG = "#3c40c6"      
@@ -35,7 +33,7 @@ class ChatbotConfig:
     BUTTON_FG = "white"
     BUTTON_ACTIVE = "#575fcf"
     BUTTON_CANCEL = "#ff3f34"
-    BUTTON_DISABLED = "#95a5a6"     # Thêm cái này phòng hờ
+    BUTTON_DISABLED = "#95a5a6"     
     
     # --- Toggle Button ---
     BUTTON_TOGGLE_BG = "white"
@@ -51,7 +49,6 @@ class ChatbotConfig:
     FONT_SIDEBAR_ITEM = ("Segoe UI", 10)
     FONT_ICON = ("Segoe UI", 14)
     FONT_STATUS = ("Segoe UI", 9, "italic")
-    # Messages (Giữ nguyên)
     WELCOME_MSG = """Xin chào! 👋 Tôi là trợ lý AI tư vấn du học.
 
 Tôi có thể giúp bạn tìm hiểu yêu cầu đầu vào, học phí và so sánh các trường đại học.
