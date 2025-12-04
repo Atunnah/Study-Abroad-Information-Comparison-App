@@ -1,3 +1,4 @@
+# chatbot.py
 import tkinter as tk
 from tkinter import scrolledtext
 import threading
@@ -17,8 +18,7 @@ class ChatbotTab:
         self.config = ChatbotConfig()
         
         # Quản lý đa hội thoại
-        # sessions = { session_id: { 'engine': ChatEngine, 'title': str, 'created_at': datetime } }
-        self.sessions = {} 
+        self.sessions = {}
         self.current_session_id = None
         
         # State xử lý
@@ -26,6 +26,9 @@ class ChatbotTab:
         self.stop_event = threading.Event()
         self.typing_animation_running = False
         self.typing_mark = None
+        
+        # State giao diện (Thêm mới)
+        self.is_sidebar_visible = True
         
         self.setup_ui()
         
@@ -35,15 +38,18 @@ class ChatbotTab:
     def setup_ui(self):
         """Chia layout thành Sidebar (Trái) và Main Chat (Phải)"""
         
-        # 1. Sidebar Frame
+        # 1. Sidebar Frame (Tạo nhưng chưa pack vội, để hàm toggle xử lý)
         self.sidebar_frame = tk.Frame(self.master_frame, bg=self.config.SIDEBAR_BG, width=250)
-        self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y)
         self.sidebar_frame.pack_propagate(False) # Cố định chiều rộng
         
+        # Gọi hàm tạo nội dung sidebar
         self._create_sidebar_content()
         
         # 2. Main Chat Area Frame
         self.main_chat_frame = tk.Frame(self.master_frame, bg=self.config.BACKGROUND)
+        
+        # Mặc định hiển thị sidebar
+        self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y)
         self.main_chat_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         self._create_main_chat_ui()
@@ -53,7 +59,7 @@ class ChatbotTab:
     def _create_sidebar_content(self):
         # Header Sidebar
         title_lbl = tk.Label(
-            self.sidebar_frame, text="LỊCH SỬ CHAT", 
+            self.sidebar_frame, text="LỊCH SỬ CHAT",
             bg=self.config.SIDEBAR_BG, fg=self.config.SIDEBAR_FG,
             font=("Segoe UI", 12, "bold"), pady=15
         )
@@ -124,16 +130,28 @@ class ChatbotTab:
     # ================= UI MAIN CHAT =================
     
     def _create_main_chat_ui(self):
-        # Header (đơn giản hơn version cũ)
+        # Header
         self.header_frame = tk.Frame(self.main_chat_frame, bg=self.config.HEADER_BG, height=50)
         self.header_frame.pack(fill=tk.X)
+        self.header_frame.pack_propagate(False) # Cố định chiều cao header
+        
+        # --- NÚT TOGGLE SIDEBAR (MỚI) ---
+        self.toggle_btn = tk.Button(
+            self.header_frame, text="≡", 
+            bg=self.config.BUTTON_TOGGLE_BG, fg=self.config.BUTTON_TOGGLE_FG,
+            font=self.config.FONT_ICON, relief=tk.FLAT,
+            activebackground=self.config.BUTTON_TOGGLE_HOVER,
+            cursor="hand2",
+            command=self.toggle_sidebar
+        )
+        self.toggle_btn.pack(side=tk.LEFT, padx=(10, 5), pady=5)
         
         self.header_title = tk.Label(
             self.header_frame, text="Hội thoại mới",
             bg=self.config.HEADER_BG, fg=self.config.HEADER_FG,
             font=self.config.FONT_HEADER_TITLE
         )
-        self.header_title.pack(side=tk.LEFT, padx=20, pady=10)
+        self.header_title.pack(side=tk.LEFT, padx=5, pady=10)
         
         # Chat Area
         chat_frame = tk.Frame(self.main_chat_frame, bg=self.config.CHAT_BG)
@@ -172,6 +190,20 @@ class ChatbotTab:
         
         self.status_label = tk.Label(self.main_chat_frame, text="", font=self.config.FONT_STATUS, bg=self.config.BACKGROUND, fg=self.config.STATUS_COLOR)
         self.status_label.pack(pady=(0, 5))
+
+    # ================= LOGIC TOGGLE SIDEBAR (MỚI) =================
+    
+    def toggle_sidebar(self):
+        """Ẩn hoặc hiện sidebar"""
+        if self.is_sidebar_visible:
+            # Đang hiện -> Ẩn đi
+            self.sidebar_frame.pack_forget()
+            self.is_sidebar_visible = False
+        else:
+            # Đang ẩn -> Hiện lại
+            # Quan trọng: pack sidebar BEFORE main_chat_frame để nó nằm bên trái
+            self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, before=self.main_chat_frame)
+            self.is_sidebar_visible = True
 
     # ================= LOGIC QUẢN LÝ SESSION =================
 
@@ -243,7 +275,7 @@ class ChatbotTab:
         self.output.config(state="disabled")
         self.output.see(tk.END)
 
-    # ================= LOGIC CHAT (Giống version cũ) =================
+    # ================= LOGIC CHAT (Giữ nguyên) =================
 
     def append_message(self, role, text):
         self.output.config(state="normal")
@@ -299,14 +331,14 @@ class ChatbotTab:
             daemon=True
         ).start()
 
-    # --- Animation & Callbacks (Giữ nguyên logic) ---
+    # --- Animation & Callbacks ---
     
     def start_typing_animation(self):
         self.typing_animation_running = True
         self.output.config(state="normal")
         self.output.insert(tk.END, "🤖 TRỢ LÝ:\n", "assistant_msg")
         self.typing_mark = self.output.index("end-1c")
-        self.output.insert(tk.END, "●", "typing") 
+        self.output.insert(tk.END, "●", "typing")
         self.output.config(state="disabled")
         self._animate_typing(0)
 
@@ -325,8 +357,8 @@ class ChatbotTab:
         self.typing_animation_running = False
         if self.typing_mark:
             self.output.config(state="normal")
-            start_del = self.output.index(f"{self.typing_mark} lineend")
-            self.output.delete(self.typing_mark, tk.END) 
+            # Xóa dòng đang gõ
+            self.output.delete(self.typing_mark, tk.END)
             self.output.config(state="disabled")
             self.typing_mark = None
 
