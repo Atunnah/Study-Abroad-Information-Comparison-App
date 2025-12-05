@@ -133,6 +133,21 @@ class ChatbotTab:
         chat_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(10, 10))
         self.output = scrolledtext.ScrolledText(chat_frame, wrap=tk.WORD, state="disabled", font=self.config.FONT_TEXT, bg=self.config.CHAT_BG, padx=15, pady=15, relief=tk.FLAT)
         self.output.pack(fill=tk.BOTH, expand=True)
+        
+        self.output.tag_config("user_msg", justify='right', lmargin1=100, lmargin2=100, rmargin=10, foreground=self.config.USER_BG)
+        self.output.tag_config("assistant_msg", justify='left', lmargin1=10, lmargin2=10, rmargin=100, foreground=self.config.TEXT_PRIMARY)
+        self.output.tag_config("typing", justify='left', lmargin1=10, foreground=self.config.STATUS_COLOR, font=("Segoe UI", 14, "bold"))
+        self.output.tag_config("error", justify='center', foreground=self.config.ERROR_COLOR)
+
+        # === THÊM TAGS CHO MARKDOWN ===
+        
+        self.output.tag_config("bold", font=("Segoe UI", 12, "bold"))
+        self.output.tag_config("italic", font=("Segoe UI", 12, "italic"))
+        self.output.tag_config("header_1", font=("Segoe UI", 16, "bold"), foreground="#2980b9", spacing3=10) # Màu xanh, to
+        self.output.tag_config("header_2", font=("Segoe UI", 14, "bold"), foreground="#16a085", spacing3=5)  # Màu xanh lá, vừa
+        self.output.tag_config("bullet", lmargin1=30, lmargin2=40) # Thụt đầu dòng cho list
+        self.output.tag_config("code_block", font=("Consolas", 10), background="#ecf0f1", foreground="#e74c3c") # Code
+        
         self.output.tag_config("user_msg", justify='right', lmargin1=100, lmargin2=100, rmargin=10, foreground=self.config.USER_BG)
         self.output.tag_config("assistant_msg", justify='left', lmargin1=10, lmargin2=10, rmargin=100, foreground=self.config.TEXT_PRIMARY)
         self.output.tag_config("typing", justify='left', lmargin1=10, foreground=self.config.STATUS_COLOR, font=("Segoe UI", 14, "bold"))
@@ -157,6 +172,90 @@ class ChatbotTab:
             self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, before=self.main_chat_frame)
             self.is_sidebar_visible = True
 
+    
+    def parse_markdown(self, start_index="1.0", end_index="end"):
+        """
+        Hàm quét text từ start_index đến end_index và áp dụng style Tkinter
+        thay vì hiển thị ký tự Markdown thô (**...**, ###...).
+        """
+        self.output.config(state="normal")
+        
+        # 1. Xử lý Heading (### Tiêu đề)
+        # Tìm các dòng bắt đầu bằng #
+        count = tk.IntVar()
+        while True:
+            # Tìm pattern: Đầu dòng, 1-3 dấu #, sau đó là text
+            pos = self.output.search(r'^#{1,3}\s+(.*)', start_index, stopindex=end_index, count=count, regexp=True)
+            if not pos: break
+            
+            line_end = f"{pos} lineend"
+            text_line = self.output.get(pos, line_end)
+            
+            # Xác định level (1, 2, 3)
+            level = 0
+            if text_line.startswith("###"): level = 3
+            elif text_line.startswith("##"): level = 2
+            elif text_line.startswith("#"): level = 1
+            
+            # Xóa dấu #
+            clean_text = text_line.lstrip("#").strip()
+            self.output.delete(pos, line_end)
+            self.output.insert(pos, clean_text)
+            
+            # Apply tag heading
+            new_line_end = f"{pos} lineend"
+            tag_name = "header_1" if level == 1 else "header_2"
+            self.output.tag_add(tag_name, pos, new_line_end)
+            
+            start_index = new_line_end # Tiếp tục tìm từ dòng sau
+            
+        # Reset index để quét Bold
+        curr_idx = "1.0" if start_index == "1.0" else start_index
+
+        # 2. Xử lý Bold (**text**)
+        while True:
+            # Tìm cụm **...**
+            match_start = self.output.search(r'\*\*', curr_idx, stopindex=end_index, regexp=True)
+            if not match_start: break
+            
+            # Tìm dấu đóng **
+            match_end = self.output.search(r'\*\*', f"{match_start}+2c", stopindex=end_index, regexp=True)
+            if not match_end: break # Không có đóng -> bỏ qua
+            
+            # Xóa dấu ** mở
+            self.output.delete(match_start, f"{match_start}+2c")
+            # Xóa dấu ** đóng (lưu ý vị trí đã bị dịch chuyển 2 ký tự do xóa dấu mở)
+            new_end = f"{match_end}-2c"
+            self.output.delete(new_end, f"{new_end}+2c")
+            
+            # Apply tag bold cho phần ở giữa
+            self.output.tag_add("bold", match_start, new_end)
+            
+            curr_idx = new_end 
+
+        # 3. Xử lý Bullet points (- item hoặc * item)
+        # Reset index
+        curr_idx = "1.0" if start_index == "1.0" else start_index
+        while True:
+            # Tìm dòng bắt đầu bằng "- " hoặc "* "
+            pos = self.output.search(r'^\s*[-*]\s+', curr_idx, stopindex=end_index, count=count, regexp=True)
+            if not pos: break
+            
+            # Thay thế "- " bằng ký tự đẹp hơn "• "
+            match_len = count.get()
+            end_match = f"{pos}+{match_len}c"
+            
+            self.output.delete(pos, end_match)
+            self.output.insert(pos, "  •  ") 
+            
+            # Apply tag bullet (để thụt lề)
+            line_end = f"{pos} lineend"
+            self.output.tag_add("bullet", pos, line_end)
+            
+            curr_idx = line_end
+
+        self.output.config(state="disabled")
+        
     # ================= LOGIC DATABASE & SESSION  =================
 
     def load_sessions_from_db(self):
@@ -290,6 +389,7 @@ class ChatbotTab:
         engine.ask_stream(user_text, self.output, self.on_response_start, self.update_status, self.stop_event)
         
         self.output.config(state="normal")
+        self.current_msg_start = self.output.index("end-1c")
         full_text = self.output.get("1.0", tk.END)
         
         if "<<SHOW_WEB_SEARCH_BUTTON>>" in full_text:
@@ -438,6 +538,9 @@ class ChatbotTab:
             self._reset_button_state()
             self.status_label.config(text="")
             self.stop_typing_animation()
+            
+            if hasattr(self, 'current_msg_start'):
+                self.parse_markdown(self.current_msg_start, "end")
 
     def _reset_button_state(self):
         self.action_btn.config(text="Gửi 📤", bg=self.config.BUTTON_BG, command=self.handle_button_click)

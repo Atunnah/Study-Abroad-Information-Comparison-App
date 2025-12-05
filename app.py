@@ -151,7 +151,7 @@ class UniversityApp:
         login_btn.bind('<Leave>', lambda e: login_btn.config(bg=self.colors['secondary']))
         
         # Footer
-        footer = tk.Label(welcome_frame, text="Version 1.0 | © 2024 University System", 
+        footer = tk.Label(welcome_frame, text="Version 1.0 | © 2025 University System", 
                          font=("Segoe UI", 9), bg=self.colors['bg'],
                          fg=self.colors['text_light'])
         footer.pack(pady=(50, 0))
