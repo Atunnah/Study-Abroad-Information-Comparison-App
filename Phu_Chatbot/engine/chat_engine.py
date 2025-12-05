@@ -30,7 +30,6 @@ class ChatEngine:
 
     def ask_stream(self, user_text, output_widget, on_response_start, status_callback, stop_event):
         try:
-            # --- BƯỚC 1: PHÂN LOẠI Ý ĐỊNH ---
             intent = self.router.classify(user_text)
             print(f"[ROUTER] User Input: '{user_text}' -> Intent: {intent}")
 
@@ -109,15 +108,13 @@ class ChatEngine:
                 if null_count >= len(top_records) / 2:
                     is_data_poor = True
             else:
-                # Không có bản ghi nào
                 is_data_poor = True
                 missing_info_msg = "\n\n⚠️ Không tìm thấy dữ liệu trong Database."
 
-            # --- 2.3: CHUẨN BỊ PROMPT ---
             if is_data_poor:
                 found_schools_context = ""
                 if db_data:
-                    names = [r['name'] for r in db_data[:3]] # Lấy 3 trường đầu
+                    names = [r['name'] for r in db_data[:3]] 
                     found_schools_context = f"Các trường đang được thảo luận: {', '.join(names)}"
                 
                 final_prompt = f"""
@@ -149,20 +146,31 @@ NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trườn
 3. DANH SÁCH ỨNG VIÊN (Dữ liệu thô):
 {self._format_db_data(db_data)}
 
-4. HƯỚNG DẪN XỬ LÝ LOGIC (STEP-BY-STEP):
+4. HƯỚNG DẪN ĐỌC JSON & SUY LUẬN (QUAN TRỌNG):
+   - **Xử lý mâu thuẫn Tiếng Anh:**
+     + Nếu JSON có key `ielts`/`toefl`/`level` (VD: "B2", "6.5") -> Đây là **TRÌNH ĐỘ BẮT BUỘC**.
+     + Nếu JSON đồng thời có `application_steps` chứa từ khóa "test", "exam", "kiểm tra" -> Có nghĩa là: **"Yêu cầu trình độ [Level] và sẽ được kiểm tra qua bài test đầu vào"**.
+     + **Hành động:** Đừng nói là "Không cần chứng chỉ" một cách quá đơn giản. Hãy nói: "Yêu cầu trình độ tương đương [Level] (VD: B2), nhưng trường có tổ chức thi kiểm tra đầu vào thay thế chứng chỉ."
+   
+   - **Xử lý GPA/Học lực:**
+     + Nếu JSON ghi "xét học bạ", "phỏng vấn động lực" -> Cơ hội tốt cho GPA không quá cao.
+     + Nếu JSON ghi "concours", "competitive exam", "xuất sắc" -> Cảnh báo user đây là trường khó vào.
+
+5. HƯỚNG DẪN XỬ LÝ LOGIC (STEP-BY-STEP):
    - **Bước 1**: Với mỗi trường, đọc kỹ JSON `entry_requirements`.
    - **Bước 2 (Match)**: 
      - Nếu User nói "Không có IELTS": Kiểm tra xem trường có yêu cầu IELTS bắt buộc không? Hay có ghi "No IELTS required" / "ESL available"? -> Nếu bắt buộc IELTS cao thì LOẠI.
      - Nếu User nói "Thể lực yếu": Kiểm tra xem có yêu cầu "Health Check" hay "Physical Test" khắt khe không? (Thường các trường quân đội/thể thao mới cần).
    - **Bước 3**: Chọn ra các trường phù hợp nhất.
 
-5. ĐẦU RA:
+6. ĐẦU RA:
    - Chỉ liệt kê trường phù hợp.
    - Format đẹp, dùng emoji.
-   - Giải thích tại sao phù hợp (VD: "✅ Trường này có khóa tiếng Anh dự bị (ESL) nên chưa cần IELTS ngay").
+   - Nếu User không có chứng chỉ, hãy ưu tiên các trường có "test/exam" hoặc "phỏng vấn" trong quy trình.
+   - Dùng emoji ✅ ⚠️ để đánh dấu điểm thuận lợi/bất lợi.
+   - Giải thích rõ ràng: "Dù trường cho nộp hồ sơ, bạn vẫn cần năng lực tiếng Anh mức [Level] để vượt qua bài test."
 """
 
-            # --- 2.3: GỌI ONLINE AI (GPT-4o-mini via g4f) ---
             stream = self.local_engine.generate_filter_stream(final_prompt)                
             full_reply = ""
             first_chunk = True
@@ -247,7 +255,6 @@ NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trườn
         if not data:
             return "Không có dữ liệu"
         
-        # Tăng giới hạn lên 15 để AI có không gian lọc
         max_records = 7
         limited_data = data[:max_records]
         

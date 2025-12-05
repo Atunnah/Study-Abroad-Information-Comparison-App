@@ -23,12 +23,10 @@ class LocalChitchatEngine:
             genai.configure(api_key=self.api_key)
             
             print(f"[Gemini] Đang kết nối với model: {target_model}...")
-            
-            # Khởi tạo trực tiếp model, không cần list_models() dò tìm nữa
+        
             self.model = genai.GenerativeModel(target_model)
             self.chat_session = self.model.start_chat(history=[])
             
-            # System prompt
             self.system_prompt = "Bạn là trợ lý ảo tư vấn du học điềm đạm, hiểu biết và lịch sự. Hãy trả lời xã giao ngắn gọn, tự nhiên bằng tiếng Việt."
             self.chat_session.send_message(self.system_prompt)
             
@@ -36,7 +34,6 @@ class LocalChitchatEngine:
 
         except Exception as e:
             print(f"❌ Lỗi cấu hình Gemini: {e}")
-            # Nếu lỗi 404 nghĩa là tài khoản chưa hỗ trợ Flash, hãy thử đổi target_model = "gemini-pro"
 
     def generate_response_stream(self, user_text):
         """
@@ -64,7 +61,6 @@ class LocalChitchatEngine:
             return None
         
         try:
-            # Dùng generate_content thay vì chat_session để không bị ảnh hưởng bởi lịch sử chat xã giao
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:

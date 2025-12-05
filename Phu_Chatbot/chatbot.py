@@ -1,4 +1,3 @@
-# chatbot.py
 import tkinter as tk
 from tkinter import scrolledtext
 import threading
@@ -158,7 +157,7 @@ class ChatbotTab:
             self.sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, before=self.main_chat_frame)
             self.is_sidebar_visible = True
 
-    # ================= LOGIC DATABASE & SESSION (MỚI) =================
+    # ================= LOGIC DATABASE & SESSION  =================
 
     def load_sessions_from_db(self):
         saved_sessions = self.db_helper.get_user_sessions(self.user_id)
@@ -169,7 +168,6 @@ class ChatbotTab:
                 title = s['title']
                 created_at = s['created_at']
                 
-                # [QUAN TRỌNG] Truyền self.global_chitchat_engine vào
                 engine = ChatEngine(
                     SYSTEM_PROMPT, 
                     db_path="universities_db.db", 
@@ -199,7 +197,6 @@ class ChatbotTab:
         session_count = len(self.sessions) + 1
         title = f"Hội thoại {session_count}"
         
-        # [QUAN TRỌNG] Truyền self.global_chitchat_engine vào
         new_engine = ChatEngine(
             SYSTEM_PROMPT, 
             db_path="universities_db.db", 
@@ -290,31 +287,24 @@ class ChatbotTab:
         threading.Thread(target=self._ask_stream_wrapper, args=(engine, user_text), daemon=True).start()
 
     def _ask_stream_wrapper(self, engine, user_text):
-        # 1. Gọi hàm stream chính
         engine.ask_stream(user_text, self.output, self.on_response_start, self.update_status, self.stop_event)
         
         self.output.config(state="normal")
         full_text = self.output.get("1.0", tk.END)
         
         if "<<SHOW_WEB_SEARCH_BUTTON>>" in full_text:
-            # Xóa tín hiệu text đi
-            # Tìm vị trí của tín hiệu
             idx = self.output.search("<<SHOW_WEB_SEARCH_BUTTON>>", "1.0", tk.END)
             if idx:
-                # Xóa chuỗi tín hiệu
                 end_idx = f"{idx} + {len('<<SHOW_WEB_SEARCH_BUTTON>>')}c"
                 self.output.delete(idx, end_idx)
                 
-                # [QUAN TRỌNG] Tạo nút bấm chèn vào vị trí đó
                 self._insert_search_button(idx, engine, user_text)
         
         self.output.config(state="disabled")
         
-        # Lưu lịch sử (giữ nguyên)
         if len(engine.chat_history) > 0:
             last_msg = engine.chat_history[-1]
             if last_msg['role'] == 'assistant':
-                # Nhớ clean cái signal trước khi lưu vào DB để không bị rác
                 clean_content = last_msg['content'].replace("<<SHOW_WEB_SEARCH_BUTTON>>", "")
                 self.db_helper.save_message(self.current_session_id, "assistant", clean_content)
         def _check_and_insert_button():
@@ -325,19 +315,15 @@ class ChatbotTab:
             match = re.search(r"<<SHOW_WEB_SEARCH_BUTTON(?:\|(.*?))?>>", full_text)
             
             if match:
-                # Lấy website nếu có (group 1)
                 specific_website = match.group(1) 
                 
-                # Vị trí bắt đầu và kết thúc của tag
                 start_idx = self.output.search(match.group(0), "1.0", tk.END)
                 if start_idx:
                     length = len(match.group(0))
                     end_idx = f"{start_idx} + {length}c"
                     
-                    # Xóa tag
                     self.output.delete(start_idx, end_idx)
                     
-                    # Chèn nút (truyền thêm specific_website)
                     self._insert_search_button(start_idx, engine, user_text, specific_website)
             
             self.output.config(state="disabled")
@@ -388,11 +374,10 @@ class ChatbotTab:
     def _start_search_thread(self, engine, user_text, specific_website):
         """Hàm phụ để bắt đầu luồng search sau khi đã dọn dẹp luồng cũ"""
         self.is_processing = True
-        self.stop_event.clear() # Cho phép luồng mới chạy
+        self.stop_event.clear() 
         self.action_btn.config(text="Hủy ❌", bg=self.config.BUTTON_CANCEL, command=self.cancel_request)
         self.status_label.config(text="⏳ Đang đọc dữ liệu web...")
         
-        # In thông báo user đã chọn tìm kiếm (để log vào giao diện cho đẹp)
         self._safe_insert(f"\n👤 BẠN: (Đã bấm) Tìm kiếm Online: {user_text}\n\n", "user_msg")
         self._safe_insert("🔍 Đang tìm kiếm trên Google/Tavily...\n", "status")
 
@@ -402,7 +387,6 @@ class ChatbotTab:
             daemon=True
         ).start()
 
-    # [CẬP NHẬT] Wrapper cho Search Stream (Sử dụng _safe_insert)
     def _search_stream_wrapper(self, engine, user_text, specific_website=None):
         try:
             for chunk in engine.perform_online_search(user_text, self.output, self.stop_event, specific_website):
@@ -411,14 +395,12 @@ class ChatbotTab:
                     self._safe_insert("\n[Đã dừng tìm kiếm]\n", "error")
                     break
                 
-                # Update UI an toàn
                 self._safe_insert(chunk, "assistant_msg")
                 
         except Exception as e:
             self._safe_insert(f"\n❌ Lỗi: {e}\n", "error")
         
         finally:
-            # Kết thúc: Reset trạng thái nút bấm và biến cờ
             self.master_frame.after(0, lambda: self._finish_processing(False))
     def start_typing_animation(self):
         self.typing_animation_running = True

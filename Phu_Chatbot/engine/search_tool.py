@@ -7,7 +7,6 @@ load_dotenv()
 
 class OnlineSearchEngine:
     def __init__(self, local_engine):
-        # Lấy API Key từ biến môi trường hoặc điền trực tiếp
         self.api_key = os.getenv("TAVILY_API_KEY") 
         self.client = TavilyClient(api_key=self.api_key) if self.api_key else None
         self.local_engine = local_engine # Dùng Gemini để tóm tắt
@@ -43,7 +42,6 @@ class OnlineSearchEngine:
             if not results:
                 web_content = "Không tìm thấy thông tin phù hợp trên web."
             
-            # 2. Prompt cho Gemini tóm tắt
             prompt = f"""
 NHIỆM VỤ: Bạn là chuyên gia tư vấn du học. Dữ liệu nội bộ thiếu, đây là thông tin TÌM KIẾM ONLINE từ website: {target_url if target_url else 'Google'}.
 
@@ -58,7 +56,6 @@ YÊU CẦU:
 - Nếu tìm thấy học phí hoặc yêu cầu đầu vào, hãy ghi rõ.
 - Cuối câu trả lời, hãy dẫn nguồn (URL) để user tham khảo.
 """
-            # Gọi Gemini Stream
             for chunk in self.local_engine.generate_filter_stream(prompt):
                 yield chunk
 

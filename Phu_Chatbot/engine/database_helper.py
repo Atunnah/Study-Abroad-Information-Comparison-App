@@ -13,7 +13,7 @@ class DatabaseHelper:
             db_path: Đường dẫn đến file database
         """
         self.db_path = db_path
-        self._init_chat_tables() # Tự động tạo bảng chat khi khởi tạo
+        self._init_chat_tables() 
 
     def _init_chat_tables(self):
         """Tạo bảng lưu lịch sử chat nếu chưa có"""
@@ -45,7 +45,6 @@ class DatabaseHelper:
         except Exception as e:
             print(f"Init DB Error: {e}")
 
-    # ================= CÁC HÀM XỬ LÝ LỊCH SỬ CHAT (MỚI) =================
 
     def save_session(self, session_id, user_id, title):
         """Lưu hoặc cập nhật thông tin session"""
@@ -87,8 +86,6 @@ class DatabaseHelper:
             print(f"DB Error: {e}")
             return False
 
-    # ================= CÁC HÀM CŨ (CÓ CẬP NHẬT) =================
-
     def get_schema_info(self):
         """
         Lấy thông tin schema của database với mô tả chi tiết
@@ -96,11 +93,74 @@ class DatabaseHelper:
         schema_description = """
 # DATABASE SCHEMA - HỆ THỐNG QUẢN LÝ TRƯỜNG ĐẠI HỌC
 
-## 1. Bảng: countries (Quốc gia)
-... (Giữ nguyên nội dung mô tả cũ của bạn ở đây) ...
+### 1. DATABASE SCHEMA (SQLite):
+
+**Table: countries** (Danh mục quốc gia)
+- `id` (INTEGER, PK): ID quốc gia
+- `code` (TEXT): Mã quốc gia (VD: 'US', 'VN', 'FR', 'DE')
+- `name` (TEXT): Tên tiếng Anh (VD: 'United States', 'Vietnam', 'France', 'Germany')
+- `flag_url` (TEXT): Link ảnh cờ
+
+**Table: universities** (Danh sách trường đại học)
+- `id` (INTEGER, PK): ID trường
+- `name` (TEXT): Tên trường
+- `country_id` (INTEGER, FK): Liên kết với `countries.id`
+- `state` (TEXT): Bang hoặc Tỉnh
+- `domain` (TEXT): Lĩnh vực đào tạo chính hoặc danh sách ngành (VD: 'Engineering, Business, Arts')
+- `website` (TEXT): Trang web chính thức
+- `num_majors` (INTEGER): Số lượng ngành đào tạo
+- `tuition_fee_avg` (REAL): Học phí trung bình (USD/năm). (Lưu ý: Có thể là NULL hoặc 0 nếu dữ liệu thiếu).
+- `entry_requirements` (TEXT): **CẤU TRÚC JSON PHỨC TẠP**.
+   - Chứa thông tin về IELTS, GPA, SAT, Essay...
+   - Ví dụ: `[{"category": "language", "key": "ielts", "value": "6.5"}, {"category": "academic", "key": "gpa", "value": "8.0"}]`
+   - **QUAN TRỌNG:** KHÔNG filter cột này trong SQL (WHERE). Chỉ SELECT nó ra để xử lý sau.
+
+**Table: scholarships** (Học bổng)
+- `id` (INTEGER, PK)
+- `name` (TEXT): Tên học bổng
+- `university_id` (INTEGER, FK): Liên kết với `universities.id`
+- `value` (REAL): Giá trị học bổng (USD)
+- `duration` (TEXT): Thời hạn (VD: '4 years', '1 semester')
+- `criteria` (TEXT): Điều kiện đạt học bổng
+
+**Table: user** (Người dùng hệ thống)
+- `uid` (INTEGER, PK): User ID
+- `full_name` (TEXT), `email` (TEXT)
+- `address` (TEXT), `phone` (TEXT)
+
+**Table: user_favorites** (Danh sách trường yêu thích của User)
+- `id` (INTEGER, PK)
+- `user_id` (INTEGER, FK): Liên kết với `user.uid`
+- `university_id` (INTEGER, FK): Liên kết với `universities.id`
+- `created_at` (TIMESTAMP)
+
+### MỐI QUAN HỆ (RELATIONSHIPS):
+1. **Tìm trường theo quốc gia:**
+   `JOIN countries c ON u.country_id = c.id`
+   
+2. **Tìm học bổng của trường:**
+   `JOIN scholarships s ON s.university_id = u.id`
+
+3. **Tìm trường yêu thích của User:**
+   `JOIN user_favorites uf ON u.id = uf.university_id WHERE uf.user_id = [CURRENT_USER_ID]`
+
+
+## QUAN HỆ GIỮA CÁC BẢNG:
+- universities.country_id → countries.id (Many-to-One)
+- scholarships.university_id → universities.id (Many-to-One)
+- user_favorites.user_id → user.uid (Many-to-One)
+- user_favorites.university_id → universities.id (Many-to-One)
+
+
+
+
+## LƯU Ý KHI TRUY VẤN:
+- Để lấy tên quốc gia: JOIN universities với countries
+- Để lấy học bổng: JOIN scholarships với universities
+- Học phí (tuition_fee_avg) tính theo USD/năm
+- entry_requirements chứa text mô tả yêu cầu (có thể dùng LIKE để tìm kiếm)
+
 """
-        # Lưu ý: Tôi đã rút gọn phần string schema để code ngắn gọn, 
-        # bạn hãy giữ nguyên phần schema_description cũ của bạn nhé.
         return schema_description
    
     def execute_query(self, sql_query, params=()):
@@ -115,9 +175,7 @@ class DatabaseHelper:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row  # Để trả về kết quả dạng dict
             cursor = conn.cursor()
-           
-            # Kiểm tra bảo mật cơ bản (chỉ áp dụng cho câu lệnh text thuần từ AI)
-            # Nếu có params truyền vào thì thường là query nội bộ an toàn
+        
             if not params:
                 sql_normalized = sql_query.strip().upper()
                 if not sql_normalized.startswith('SELECT'):
@@ -161,7 +219,6 @@ class DatabaseHelper:
         sql = "SELECT DISTINCT name FROM countries"
         success, data = self.execute_query(sql)
         if success and data:
-            # Trả về chuỗi: "United States, Vietnam, France, United Kingdom..."
             names = [row['name'] for row in data]
             return ", ".join(names)
         return "United States, United Kingdom, Vietnam"
