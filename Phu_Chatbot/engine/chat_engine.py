@@ -132,7 +132,7 @@ NHIỆM VỤ:
 """
             else:
                 final_prompt = f"""
-NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trường sau đây dựa trên JSON Requirements.
+NHIỆM VỤ: Bạn là Chuyên gia Tư vấn Du học. Hãy xử lý dựa trên MỤC ĐÍCH CÂU HỎI.
 
 1. YÊU CẦU CỦA NGƯỜI DÙNG: "{user_text}"
    (Lưu ý các từ khóa: không có tiếng anh, sức khỏe, GPA thấp...)
@@ -142,11 +142,39 @@ NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trườn
    - **Tiếng Anh**: Tìm object có `key` chứa "IELTS", "TOEFL".
    - **Học thuật**: Tìm object có `key` chứa "GPA", "SAT".
    - **Khác**: Tìm `key` chứa "Health", "Interview".
+   
+3. QUY TẮC XỬ LÝ (LOGIC RẼ NHÁNH):
+🔹 **NHÁNH 1: TRA CỨU THÔNG TIN (Info Retrieval)**
+   - Dấu hiệu: User hỏi "Học phí là bao nhiêu?", "Trường có học bổng không?", "Yêu cầu là gì?".
+   - **HÀNH ĐỘNG:**
+     + Đọc JSON và TRÍCH XUẤT thông tin chính xác.
+     + **TUYỆT ĐỐI KHÔNG LOẠI BỎ** trường chỉ vì yêu cầu cao. (VD: Trường cần IELTS 7.0, cứ báo là cần 7.0, đừng tự ý nói user không đủ điều kiện nếu user chưa khai hồ sơ).
+     + Trình bày rõ: Học phí ($...), Yêu cầu (IELTS..., GPA...), Học bổng (nếu có).
 
-3. DANH SÁCH ỨNG VIÊN (Dữ liệu thô):
+   🔹 **NHÁNH 2: TƯ VẤN HỒ SƠ (Strict Validator)**
+   - Dấu hiệu: User khai "Tôi không có tiếng Anh", "GPA thấp", "Tôi có đủ điều kiện không?".
+   - **HÀNH ĐỘNG:**
+     + Lúc này mới áp dụng **LUẬT LOẠI TRỪ**: So sánh hồ sơ user với JSON.
+     + Nếu User "không có tiếng Anh" mà JSON đòi IELTS -> **LOẠI** (Hoặc cảnh báo đỏ).
+     QUY TẮC SÀNG LỌC KHẮC KHIỆT (BẮT BUỘC TUÂN THỦ):
+
+   🛑 **LUẬT LOẠI TRỪ VỀ TIẾNG ANH (NGHIÊM CẤM VI PHẠM):**
+   - Hãy quét cột `entry_requirements` (JSON) của từng trường.
+   - Nếu tìm thấy các từ khóa: `IELTS`, `TOEFL`, `TOEIC`, `CEFR`, `Level`, `B1`, `B2`, `C1`, `English test`.
+   - **SO SÁNH:**
+     + Nếu JSON yêu cầu: "C1", "B2", "IELTS 6.0", "TOEIC"...
+     + VÀ User: "Không có chứng chỉ".
+     + **KẾT LUẬN:** -> **LOẠI NGAY LẬP TỨC**. Không được recommend với lý do "có thể nợ" hay "học tiếng sau".
+     + **NGOẠI LỆ DUY NHẤT:** Chỉ giữ lại nếu JSON ghi rõ: "No certificate required", "ESL available", "Placement test included" (Có bài thi xếp lớp nội bộ).
+
+   🛑 **LUẬT VỀ DỮ LIỆU:**
+   - Chỉ trả lời dựa trên thông tin có trong JSON. Không được đoán.
+
+
+4. DANH SÁCH ỨNG VIÊN (Dữ liệu thô):
 {self._format_db_data(db_data)}
 
-4. HƯỚNG DẪN ĐỌC JSON & SUY LUẬN (QUAN TRỌNG):
+5. HƯỚNG DẪN ĐỌC JSON & SUY LUẬN (QUAN TRỌNG):
    - **Xử lý mâu thuẫn Tiếng Anh:**
      + Nếu JSON có key `ielts`/`toefl`/`level` (VD: "B2", "6.5") -> Đây là **TRÌNH ĐỘ BẮT BUỘC**.
      + Nếu JSON đồng thời có `application_steps` chứa từ khóa "test", "exam", "kiểm tra" -> Có nghĩa là: **"Yêu cầu trình độ [Level] và sẽ được kiểm tra qua bài test đầu vào"**.
@@ -156,14 +184,14 @@ NHIỆM VỤ: Bạn là chuyên gia tuyển sinh. Hãy LỌC danh sách trườn
      + Nếu JSON ghi "xét học bạ", "phỏng vấn động lực" -> Cơ hội tốt cho GPA không quá cao.
      + Nếu JSON ghi "concours", "competitive exam", "xuất sắc" -> Cảnh báo user đây là trường khó vào.
 
-5. HƯỚNG DẪN XỬ LÝ LOGIC (STEP-BY-STEP):
+6. HƯỚNG DẪN XỬ LÝ LOGIC (STEP-BY-STEP):
    - **Bước 1**: Với mỗi trường, đọc kỹ JSON `entry_requirements`.
    - **Bước 2 (Match)**: 
      - Nếu User nói "Không có IELTS": Kiểm tra xem trường có yêu cầu IELTS bắt buộc không? Hay có ghi "No IELTS required" / "ESL available"? -> Nếu bắt buộc IELTS cao thì LOẠI.
      - Nếu User nói "Thể lực yếu": Kiểm tra xem có yêu cầu "Health Check" hay "Physical Test" khắt khe không? (Thường các trường quân đội/thể thao mới cần).
    - **Bước 3**: Chọn ra các trường phù hợp nhất.
 
-6. ĐẦU RA:
+7. ĐẦU RA:
    - Chỉ liệt kê trường phù hợp.
    - Format đẹp, dùng emoji.
    - Nếu User không có chứng chỉ, hãy ưu tiên các trường có "test/exam" hoặc "phỏng vấn" trong quy trình.
